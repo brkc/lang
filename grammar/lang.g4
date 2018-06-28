@@ -18,6 +18,10 @@ print
   ;
 
 expression
+  : String
+  | mathExpression;
+
+mathExpression
   : term (('+'|'-') term)*
   ;
 
@@ -33,4 +37,5 @@ atom
 
 Id: [a-z]+;
 Number: [0-9]+;
-Whitespace: [ \t\r]+ -> skip;
+String: '"' (~["\r\n] | '\\"')* '"';
+Whitespace: [ \t\r\n]+ -> skip;
