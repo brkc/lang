@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -69,6 +70,23 @@ func (lex *lexer) emit(s string, args ...string) {
 	lex.out <- line
 }
 
+func (lex *lexer) consumeString() {
+	var buffer bytes.Buffer
+	var prev rune
+	for {
+		c, err := lex.next()
+		if err != nil {
+			break
+		}
+		if prev != '\\' && c == '"' {
+			break
+		}
+		prev = c
+		buffer.WriteRune(c)
+	}
+	lex.emit("string", buffer.String())
+}
+
 func (lex *lexer) lex() {
 	for lex.hasMore() {
 		lex.consume("let", "let")
@@ -76,13 +94,15 @@ func (lex *lexer) lex() {
 		lex.consume("[a-z]+", "id")
 		lex.consume("[0-9]+", "number")
 		c, _ := lex.next()
-		if c == '\n' {
+		if c == '"' {
+			lex.consumeString()
+		} else if c == '\n' {
 			lex.emit("\\n")
 			lex.newLine()
 		} else if strings.ContainsRune("=+-*/()", c) {
 			lex.emit(string(c))
 		} else if !strings.ContainsRune(" \t\r", c) {
-			fmt.Fprintf(os.Stderr, "unrecognized char: %c\n", c)
+			fmt.Fprintf(os.Stderr, "unrecognized char '%c' at line %d, column %d\n", c, lex.line+1, lex.pos-lex.width-lex.lineIndex+1)
 			os.Exit(1)
 		}
 	}
