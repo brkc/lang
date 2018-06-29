@@ -141,14 +141,14 @@ func (s *state) assignment() {
 	id := s.expect("id")
 	s.expect("=")
 	n := s.expression()
-	s.expect("\\n")
+	s.expect(";")
 	s.variables[id] = n
 }
 
 func (s *state) print() {
 	s.expect("print")
 	expression := s.expression()
-	s.expect("\\n")
+	s.expect(";")
 	switch expression.typeValue {
 	case numberType:
 		fmt.Printf("%d\n", expression.value.(int))

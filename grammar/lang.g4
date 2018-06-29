@@ -10,11 +10,11 @@ statement
   ;
 
 assignment
-  : 'let' Id '=' expression '\n'
+  : 'let' Id '=' expression ';'
   ;
 
 print
-  : 'print' expression '\n'
+  : 'print' expression ';'
   ;
 
 expression

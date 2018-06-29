@@ -1,2 +1,2 @@
-let xbc = 2 * (3 + 4) * 5
-print xbc
+let xbc = 2 * (3 + 4) * 5;
+print xbc;

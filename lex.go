@@ -96,12 +96,12 @@ func (lex *lexer) lex() {
 		c, _ := lex.next()
 		if c == '"' {
 			lex.consumeString()
-		} else if c == '\n' {
-			lex.emit("\\n")
+		} else if c == ';' {
+			lex.emit(";")
 			lex.newLine()
 		} else if strings.ContainsRune("=+-*/()", c) {
 			lex.emit(string(c))
-		} else if !strings.ContainsRune(" \t\r", c) {
+		} else if !strings.ContainsRune(" \t\r\n", c) {
 			fmt.Fprintf(os.Stderr, "unrecognized char '%c' at line %d, column %d\n", c, lex.line+1, lex.pos-lex.width-lex.lineIndex+1)
 			os.Exit(1)
 		}
