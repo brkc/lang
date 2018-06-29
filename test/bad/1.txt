@@ -1,2 +1,2 @@
-let s = "hello"
-print 3 + s
+let s = "hello";
+print 3 + s;
