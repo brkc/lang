@@ -59,15 +59,15 @@ func (s *state) expect(expected string) string {
 	return value
 }
 
-func (s *state) block() []interface{} {
-	statements := make([]interface{}, 0)
+func (s *state) block() []visitor {
+	statements := make([]visitor, 0)
 	for !s.accept("eof") && !s.accept("}") {
 		statements = append(statements, s.statement())
 	}
 	return statements
 }
 
-func (s *state) statement() interface{} {
+func (s *state) statement() visitor {
 	if s.accept("let") {
 		return s.assignment()
 	} else if s.accept("print") {
@@ -120,7 +120,7 @@ func (s *state) ifStatement() *IfStatement {
 	return &IfStatement{left, operator, right, block}
 }
 
-func (s *state) expression() interface{} {
+func (s *state) expression() visitor {
 	if s.accept("string") {
 		return &StringLiteral{s.expect("string")}
 	} else if s.accept("id") {
@@ -159,7 +159,7 @@ func (s *state) term() *Term {
 	}
 }
 
-func (s *state) atom() interface{} {
+func (s *state) atom() visitor {
 	if s.accept("id") {
 		return &Identifier{s.expect("id")}
 	} else if s.accept("number") {
@@ -176,6 +176,6 @@ func (s *state) atom() interface{} {
 }
 
 // Parse executes the output from Lex
-func Parse(lexOut <-chan string) []interface{} {
+func Parse(lexOut <-chan string) []visitor {
 	return newState(lexOut).block()
 }
