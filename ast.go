@@ -10,6 +10,13 @@ type (
 		value string
 	}
 
+	IfStatement struct {
+		left     interface{}
+		operator string
+		right    interface{}
+		block    []interface{}
+	}
+
 	MathExpression struct {
 		left     interface{}
 		operator string

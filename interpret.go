@@ -32,6 +32,14 @@ func visit(i interface{}) {
 		n.visit()
 	case *AssignmentStatement:
 		n.visit()
+	case *IfStatement:
+		n.visit()
+	}
+}
+
+func visitBlock(block []interface{}) {
+	for _, b := range block {
+		visit(b)
 	}
 }
 
@@ -95,6 +103,71 @@ func (p *PrintStatement) visit() {
 	default:
 		fmt.Fprintf(os.Stderr, "unexpected type %T\n", v)
 		os.Exit(1)
+	}
+}
+
+func (i *IfStatement) visit() {
+	var b bool
+	left := visitExpression(i.left)
+	right := visitExpression(i.right)
+	switch left.(type) {
+	case int:
+		if _, ok := right.(int); !ok {
+			fmt.Fprintf(os.Stderr, "type mismatch, int != %T\n", right)
+			os.Exit(1)
+		}
+		b = evaluateNumberComparison(left.(int), i.operator, right.(int))
+	case string:
+		if _, ok := right.(string); !ok {
+			fmt.Fprintf(os.Stderr, "type mismatch, string != %T\n", right)
+			os.Exit(1)
+		}
+		b = evaluateStringComparison(left.(string), i.operator, right.(string))
+	}
+	if b {
+		visitBlock(i.block)
+	}
+}
+
+func evaluateNumberComparison(left int, operator string, right int) bool {
+	switch operator {
+	case "==":
+		return left == right
+	case "!=":
+		return left != right
+	case ">=":
+		return left >= right
+	case ">":
+		return left > right
+	case "<":
+		return left < right
+	case "<=":
+		return left <= right
+	default:
+		fmt.Fprintln(os.Stderr, "unrecognized operator")
+		os.Exit(1)
+		return false
+	}
+}
+
+func evaluateStringComparison(left string, operator string, right string) bool {
+	switch operator {
+	case "==":
+		return left == right
+	case "!=":
+		return left != right
+	case ">=":
+		return left >= right
+	case ">":
+		return left > right
+	case "<":
+		return left < right
+	case "<=":
+		return left <= right
+	default:
+		fmt.Fprintln(os.Stderr, "unrecognized operator")
+		os.Exit(1)
+		return false
 	}
 }
 
