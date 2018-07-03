@@ -6,127 +6,70 @@ import (
 	"strconv"
 )
 
-type builtinType int
+type (
+	adt struct {
+		typeValue builtinType
+		value     interface{}
+	}
+	builtinType int
+)
 
 const (
 	numberType builtinType = 1 << iota
 	stringType
 )
 
-var types = map[builtinType]string{
-	numberType: "number",
-	stringType: "string",
-}
-
-var variables = map[string]interface{}{}
+var (
+	types = map[builtinType]string{
+		numberType: "number",
+		stringType: "string",
+	}
+	variables = map[string]*adt{}
+)
 
 func Interpret(s string) {
 	for _, s := range Parse(Lex(s)) {
-		visit(s)
+		s.visit()
 	}
 }
 
-func visit(i interface{}) {
-	switch n := i.(type) {
-	case *PrintStatement:
-		n.visit()
-	case *AssignmentStatement:
-		n.visit()
-	case *IfStatement:
-		n.visit()
-	}
+func (a *AssignmentStatement) visit() *adt {
+	variables[a.id] = a.expression.visit()
+	return nil
 }
 
-func visitBlock(block []interface{}) {
-	for _, b := range block {
-		visit(b)
-	}
-}
-
-func visitExpression(i interface{}) interface{} {
-	switch n := i.(type) {
-	case *StringLiteral:
-		return n.visit()
-	case *NumberLiteral:
-		return n.visit()
-	case *Identifier:
-		return n.visit()
-	case *MathExpression:
-		return n.visit()
+func (p *PrintStatement) visit() *adt {
+	v := p.expression.visit()
+	switch v.typeValue {
+	case stringType:
+		fmt.Printf("%s\n", v.value.(string))
+	case numberType:
+		fmt.Printf("%d\n", v.value.(int))
 	default:
-		fmt.Fprintf(os.Stderr, "unexpected type %T\n", n)
+		fmt.Fprintf(os.Stderr, "unexpected type %s\n", types[v.typeValue])
 		os.Exit(1)
 	}
 	return nil
 }
 
-func visitMathExpression(i interface{}) int {
-	switch n := i.(type) {
-	case *MathExpression:
-		return n.visit()
-	case *Term:
-		return n.visit()
-	case *NumberLiteral:
-		return n.visit()
-	case *Identifier:
-		return n.visit().(int)
-	}
-	return 0
-}
-
-func (a *AssignmentStatement) visit() {
-	switch e := a.expression.(type) {
-	case *StringLiteral:
-		variables[a.id] = e.visit()
-	case *NumberLiteral:
-		variables[a.id] = e.visit()
-	case *MathExpression:
-		variables[a.id] = e.visit()
-	case *Term:
-		variables[a.id] = e.visit()
-	case *Identifier:
-		v := variables[a.id]
-		variables[a.id] = v
-	default:
-		fmt.Fprintf(os.Stderr, "unrecognized type: %T\n", a.expression)
-		os.Exit(1)
-	}
-}
-
-func (p *PrintStatement) visit() {
-	v := visitExpression(p.expression)
-	switch d := v.(type) {
-	case string:
-		fmt.Printf("%s\n", d)
-	case int:
-		fmt.Printf("%d\n", d)
-	default:
-		fmt.Fprintf(os.Stderr, "unexpected type %T\n", v)
-		os.Exit(1)
-	}
-}
-
-func (i *IfStatement) visit() {
+func (i *IfStatement) visit() *adt {
 	var b bool
-	left := visitExpression(i.left)
-	right := visitExpression(i.right)
-	switch left.(type) {
-	case int:
-		if _, ok := right.(int); !ok {
-			fmt.Fprintf(os.Stderr, "type mismatch, int != %T\n", right)
-			os.Exit(1)
-		}
-		b = evaluateNumberComparison(left.(int), i.operator, right.(int))
-	case string:
-		if _, ok := right.(string); !ok {
-			fmt.Fprintf(os.Stderr, "type mismatch, string != %T\n", right)
-			os.Exit(1)
-		}
-		b = evaluateStringComparison(left.(string), i.operator, right.(string))
+	left := i.left.visit()
+	right := i.right.visit()
+	switch left.typeValue {
+	case numberType:
+		typeCheck(numberType, left, right)
+		b = evaluateNumberComparison(left.value.(int), i.operator, right.value.(int))
+	case stringType:
+		typeCheck(stringType, left, right)
+		b = evaluateStringComparison(left.value.(string), i.operator, right.value.(string))
 	}
 	if b {
-		visitBlock(i.block)
+		for _, s := range i.block {
+			s.visit()
+		}
 	}
+	return nil
 }
 
 func evaluateNumberComparison(left int, operator string, right int) bool {
@@ -171,43 +114,60 @@ func evaluateStringComparison(left string, operator string, right string) bool {
 	}
 }
 
-func (e *MathExpression) visit() int {
+func (e *MathExpression) visit() *adt {
+	left := e.left.visit()
+	typeCheck(numberType, left)
 	if e.right != nil {
+		right := e.right.visit()
+		typeCheck(numberType, right)
 		switch e.operator {
 		case "+":
-			return visitMathExpression(e.left) + visitMathExpression(e.right)
+			return &adt{numberType, left.value.(int) + right.value.(int)}
 		case "-":
-			return visitMathExpression(e.left) - visitMathExpression(e.right)
+			return &adt{numberType, left.value.(int) - right.value.(int)}
 		}
 	}
-	return visitMathExpression(e.left)
+	return e.left.visit()
 }
 
-func (t *Term) visit() int {
+func (t *Term) visit() *adt {
+	left := t.left.visit()
+	typeCheck(numberType, left)
 	if t.right != nil {
+		right := t.right.visit()
+		typeCheck(numberType, right)
 		switch t.operator {
 		case "*":
-			return visitMathExpression(t.left) * visitMathExpression(t.right)
+			return &adt{numberType, left.value.(int) * right.value.(int)}
 		case "/":
-			return visitMathExpression(t.left) / visitMathExpression(t.right)
+			return &adt{numberType, left.value.(int) / right.value.(int)}
 		}
 	}
-	return visitMathExpression(t.left)
+	return t.left.visit()
 }
 
-func (i *Identifier) visit() interface{} {
+func (i *Identifier) visit() *adt {
 	return variables[i.value]
 }
 
-func (nl *NumberLiteral) visit() int {
+func (nl *NumberLiteral) visit() *adt {
 	n, err := strconv.Atoi(nl.value)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "expected number")
 		os.Exit(1)
 	}
-	return n
+	return &adt{numberType, n}
 }
 
-func (s *StringLiteral) visit() string {
-	return s.value
+func (s *StringLiteral) visit() *adt {
+	return &adt{stringType, s.value}
+}
+
+func typeCheck(b builtinType, args ...*adt) {
+	for _, arg := range args {
+		if arg.typeValue != b {
+			fmt.Fprintf(os.Stderr, "type mismatch: %s != %s\n", types[arg.typeValue], types[b])
+			os.Exit(1)
+		}
+	}
 }

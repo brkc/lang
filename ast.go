@@ -3,7 +3,7 @@ package main
 type (
 	AssignmentStatement struct {
 		id         string
-		expression interface{}
+		expression visitor
 	}
 
 	Identifier struct {
@@ -11,16 +11,16 @@ type (
 	}
 
 	IfStatement struct {
-		left     interface{}
+		left     visitor
 		operator string
-		right    interface{}
-		block    []interface{}
+		right    visitor
+		block    []visitor
 	}
 
 	MathExpression struct {
-		left     interface{}
+		left     visitor
 		operator string
-		right    interface{}
+		right    visitor
 	}
 
 	NumberLiteral struct {
@@ -28,7 +28,7 @@ type (
 	}
 
 	PrintStatement struct {
-		expression interface{}
+		expression visitor
 	}
 
 	StringLiteral struct {
@@ -36,8 +36,12 @@ type (
 	}
 
 	Term struct {
-		left     interface{}
+		left     visitor
 		operator string
-		right    interface{}
+		right    visitor
+	}
+
+	visitor interface {
+		visit() *adt
 	}
 )
