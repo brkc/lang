@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
-	"strings"
 )
 
 type state struct {
@@ -26,7 +26,7 @@ func newState(lexOut <-chan string) *state {
 func newTokenInfo(lexOut <-chan string) *tokenInfo {
 	var err error
 	text := <-lexOut
-	fields := strings.Fields(text)
+	fields := regexp.MustCompile(" ").Split(text, 4)
 	tokenInfo := &tokenInfo{}
 	tokenInfo.symbol = fields[0]
 	tokenInfo.line, err = strconv.Atoi(fields[1])

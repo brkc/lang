@@ -66,9 +66,8 @@ func (lex *lexer) emit(s string, args ...string) {
 	for _, arg := range args {
 		line += fmt.Sprintf(" %s", arg)
 	}
-	line += fmt.Sprintf("\n")
 	if os.Getenv("LEXDEBUG") != "" {
-		fmt.Fprint(os.Stderr, line)
+		fmt.Fprintln(os.Stderr, line)
 	}
 	lex.out <- line
 }
