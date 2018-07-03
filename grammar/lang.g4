@@ -1,12 +1,13 @@
 grammar lang;
 
-root
+block
   : statement*
   ;
 
 statement
   : assignment
   | print
+  | ifStatement
   ;
 
 assignment
@@ -15,6 +16,10 @@ assignment
 
 print
   : 'print' expression ';'
+  ;
+
+ifStatement
+  : 'if' expression ('=='|'!='|'>='|'>'|'<'|'<=') expression '{' block '}'
   ;
 
 expression

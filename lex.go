@@ -93,6 +93,11 @@ func (lex *lexer) lex() {
 	for lex.hasMore() {
 		lex.consume("let", "let")
 		lex.consume("print", "print")
+		lex.consume("if", "if")
+		lex.consume("==", "==")
+		lex.consume("!=", "!=")
+		lex.consume(">=", ">=")
+		lex.consume("<=", "<=")
 		lex.consume("[a-z]+", "id")
 		lex.consume("[0-9]+", "number")
 		c, _ := lex.next()
@@ -101,7 +106,7 @@ func (lex *lexer) lex() {
 		} else if c == ';' {
 			lex.emit(";")
 			lex.newLine()
-		} else if strings.ContainsRune("=+-*/()", c) {
+		} else if strings.ContainsRune("=+-*/(){}", c) {
 			lex.emit(string(c))
 		} else if !strings.ContainsRune(" \t\r\n", c) {
 			fmt.Fprintf(os.Stderr, "unrecognized char '%c' at line %d, column %d\n", c, lex.line+1, lex.pos-lex.width-lex.lineIndex+1)

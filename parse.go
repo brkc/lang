@@ -59,9 +59,9 @@ func (s *state) expect(expected string) string {
 	return value
 }
 
-func (s *state) root() []interface{} {
+func (s *state) block() []interface{} {
 	statements := make([]interface{}, 0)
-	for !s.accept("eof") {
+	for !s.accept("eof") && !s.accept("}") {
 		statements = append(statements, s.statement())
 	}
 	return statements
@@ -72,6 +72,8 @@ func (s *state) statement() interface{} {
 		return s.assignment()
 	} else if s.accept("print") {
 		return s.print()
+	} else if s.accept("if") {
+		return s.ifStatement()
 	} else {
 		s.expect("let|print")
 		return nil
@@ -92,6 +94,30 @@ func (s *state) print() *PrintStatement {
 	expression := s.expression()
 	s.expect(";")
 	return &PrintStatement{expression}
+}
+
+func (s *state) ifStatement() *IfStatement {
+	var operator string
+	s.expect("if")
+	left := s.expression()
+	if s.accept("==") {
+		operator = s.expect("==")
+	} else if s.accept("!=") {
+		operator = s.expect("!=")
+	} else if s.accept(">=") {
+		operator = s.expect(">=")
+	} else if s.accept(">") {
+		operator = s.expect(">")
+	} else if s.accept("<") {
+		operator = s.expect("<")
+	} else if s.accept("<=") {
+		operator = s.expect("<=")
+	}
+	right := s.expression()
+	s.expect("{")
+	block := s.block()
+	s.expect("}")
+	return &IfStatement{left, operator, right, block}
 }
 
 func (s *state) expression() interface{} {
@@ -151,5 +177,5 @@ func (s *state) atom() interface{} {
 
 // Parse executes the output from Lex
 func Parse(lexOut <-chan string) []interface{} {
-	return newState(lexOut).root()
+	return newState(lexOut).block()
 }
