@@ -7,28 +7,9 @@ import (
 	"strings"
 )
 
-type builtinType int
-
-const (
-	numberType builtinType = 1 << iota
-	stringType
-)
-
-var types = map[builtinType]string{
-	numberType: "number",
-	stringType: "string",
-}
-
 type state struct {
-	token     *tokenInfo
-	lexOut    <-chan string
-	variables map[string]*valueInfo
-}
-
-type valueInfo struct {
-	token     *tokenInfo
-	typeValue builtinType
-	value     interface{}
+	token  *tokenInfo
+	lexOut <-chan string
 }
 
 type tokenInfo struct {
@@ -39,11 +20,7 @@ type tokenInfo struct {
 }
 
 func newState(lexOut <-chan string) *state {
-	return &state{newTokenInfo(lexOut), lexOut, map[string]*valueInfo{}}
-}
-
-func newValueInfo(token *tokenInfo, typeValue builtinType, value interface{}) *valueInfo {
-	return &valueInfo{token, typeValue, value}
+	return &state{newTokenInfo(lexOut), lexOut}
 }
 
 func newTokenInfo(lexOut <-chan string) *tokenInfo {
@@ -72,10 +49,6 @@ func (s *state) accept(expected string) bool {
 	return s.token.symbol == expected
 }
 
-func (s *state) acceptType(t builtinType) bool {
-	return s.variables[s.token.value].typeValue == t
-}
-
 func (s *state) expect(expected string) string {
 	if s.token.symbol != expected {
 		fmt.Fprintf(os.Stderr, "expected '%s', got '%s' at line %d, column %d\n", expected, s.token.symbol, s.token.line, s.token.column)
@@ -86,131 +59,85 @@ func (s *state) expect(expected string) string {
 	return value
 }
 
-func (s *state) expectType(t builtinType, v *valueInfo) {
-	if v.typeValue != t {
-		fmt.Fprintf(os.Stderr, "expected '%s', got '%s' at line %d, column %d\n", types[t], types[v.typeValue], v.token.line, v.token.column)
-		os.Exit(1)
-	}
-}
-
-func (s *state) expectVariable() *valueInfo {
-	token := s.token
-	variable := s.variables[s.expect("id")]
-	return newValueInfo(token, variable.typeValue, variable.value)
-}
-
-func (s *state) expectNumber() *valueInfo {
-	token := s.token
-	n, err := strconv.Atoi(s.expect("number"))
-	if err != nil {
-		fmt.Printf("err getting number: %s\n", err)
-		os.Exit(1)
-	}
-	return newValueInfo(token, numberType, n)
-}
-
-func (s *state) expectString() *valueInfo {
-	token := s.token
-	return newValueInfo(token, stringType, s.expect("string"))
-}
-
-func (s *state) root() {
+func (s *state) root() []interface{} {
+	statements := make([]interface{}, 0)
 	for !s.accept("eof") {
-		if s.accept("let") {
-			s.assignment()
-		} else if s.accept("print") {
-			s.print()
-		} else {
-			s.expect("let|number")
-		}
+		statements = append(statements, s.statement())
 	}
+	return statements
 }
 
-func (s *state) statement() {
+func (s *state) statement() interface{} {
 	if s.accept("let") {
-		s.assignment()
+		return s.assignment()
 	} else if s.accept("print") {
-		s.print()
+		return s.print()
 	} else {
 		s.expect("let|print")
+		return nil
 	}
 }
 
-func (s *state) assignment() {
+func (s *state) assignment() *AssignmentStatement {
 	s.expect("let")
 	id := s.expect("id")
 	s.expect("=")
 	n := s.expression()
 	s.expect(";")
-	s.variables[id] = n
+	return &AssignmentStatement{id, n}
 }
 
-func (s *state) print() {
+func (s *state) print() *PrintStatement {
 	s.expect("print")
 	expression := s.expression()
 	s.expect(";")
-	switch expression.typeValue {
-	case numberType:
-		fmt.Printf("%d\n", expression.value.(int))
-	case stringType:
-		fmt.Printf("%s\n", expression.value.(string))
-	}
+	return &PrintStatement{expression}
 }
 
-func (s *state) expression() *valueInfo {
+func (s *state) expression() interface{} {
 	if s.accept("string") {
-		return s.expectString()
-	} else if s.accept("id") && s.acceptType(stringType) {
-		return s.expectVariable()
+		return &StringLiteral{s.expect("string")}
+	} else if s.accept("id") {
+		return &Identifier{s.expect("id")}
 	}
 	return s.mathExpression()
 }
 
-func (s *state) mathExpression() *valueInfo {
-	term := s.term()
-	s.expectType(numberType, term)
+func (s *state) mathExpression() *MathExpression {
+	e := &MathExpression{s.term(), "", nil}
 	for {
 		if s.accept("+") {
 			s.expect("+")
-			right := s.term()
-			s.expectType(numberType, right)
-			term.value = term.value.(int) + right.value.(int)
+			e = &MathExpression{e, "+", s.term()}
 		} else if s.accept("-") {
 			s.expect("-")
-			right := s.term()
-			s.expectType(numberType, right)
-			term.value = term.value.(int) - right.value.(int)
+			e = &MathExpression{e, "-", s.term()}
 		} else {
-			return term
+			return e
 		}
 	}
 }
 
-func (s *state) term() *valueInfo {
-	atom := s.atom()
-	s.expectType(numberType, atom)
+func (s *state) term() *Term {
+	t := &Term{s.atom(), "", nil}
 	for {
 		if s.accept("*") {
 			s.expect("*")
-			right := s.atom()
-			s.expectType(numberType, right)
-			atom.value = atom.value.(int) * right.value.(int)
+			t = &Term{t, "*", s.atom()}
 		} else if s.accept("/") {
 			s.expect("/")
-			right := s.atom()
-			s.expectType(numberType, right)
-			atom.value = atom.value.(int) / right.value.(int)
+			t = &Term{t, "/", s.atom()}
 		} else {
-			return atom
+			return t
 		}
 	}
 }
 
-func (s *state) atom() *valueInfo {
+func (s *state) atom() interface{} {
 	if s.accept("id") {
-		return s.expectVariable()
+		return &Identifier{s.expect("id")}
 	} else if s.accept("number") {
-		return s.expectNumber()
+		return &NumberLiteral{s.expect("number")}
 	} else if s.accept("(") {
 		s.expect("(")
 		n := s.mathExpression()
@@ -223,6 +150,6 @@ func (s *state) atom() *valueInfo {
 }
 
 // Parse executes the output from Lex
-func Parse(lexOut <-chan string) {
-	newState(lexOut).root()
+func Parse(lexOut <-chan string) []interface{} {
+	return newState(lexOut).root()
 }
