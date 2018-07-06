@@ -1,0 +1,3 @@
+if !(false && false) {
+  print "!(false && false)";
+}

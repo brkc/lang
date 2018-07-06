@@ -1,0 +1,24 @@
+if true && true {
+  print "true && true";
+}
+if true && false {
+  print "true && false";
+}
+if false && true {
+  print "false && true";
+}
+if false && false {
+  print "false && false";
+}
+if true || true {
+  print "true || true";
+}
+if true || false {
+  print "true || false";
+}
+if false || true {
+  print "false || true";
+}
+if false || false {
+  print "false || false";
+}
