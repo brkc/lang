@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-type state struct {
+type parser struct {
 	token  *tokenInfo
 	lexOut <-chan string
 }
@@ -19,8 +19,8 @@ type tokenInfo struct {
 	value  string
 }
 
-func newState(lexOut <-chan string) *state {
-	return &state{newTokenInfo(lexOut), lexOut}
+func newParser(lexOut <-chan string) *parser {
+	return &parser{newTokenInfo(lexOut), lexOut}
 }
 
 func newTokenInfo(lexOut <-chan string) *tokenInfo {
@@ -45,180 +45,180 @@ func newTokenInfo(lexOut <-chan string) *tokenInfo {
 	return tokenInfo
 }
 
-func (s *state) accept(expected string) bool {
-	return s.token.symbol == expected
+func (p *parser) accept(expected string) bool {
+	return p.token.symbol == expected
 }
 
-func (s *state) expect(expected string) string {
-	if s.token.symbol != expected {
-		fmt.Fprintf(os.Stderr, "expected '%s', got '%s' at line %d, column %d\n", expected, s.token.symbol, s.token.line, s.token.column)
+func (p *parser) expect(expected string) string {
+	if p.token.symbol != expected {
+		fmt.Fprintf(os.Stderr, "expected '%s', got '%s' at line %d, column %d\n", expected, p.token.symbol, p.token.line, p.token.column)
 		os.Exit(1)
 	}
-	value := s.token.value
-	s.token = newTokenInfo(s.lexOut)
+	value := p.token.value
+	p.token = newTokenInfo(p.lexOut)
 	return value
 }
 
-func (s *state) block() []visitor {
+func (p *parser) block() []visitor {
 	statements := make([]visitor, 0)
-	for !s.accept("eof") && !s.accept("}") {
-		statements = append(statements, s.statement())
+	for !p.accept("eof") && !p.accept("}") {
+		statements = append(statements, p.statement())
 	}
 	return statements
 }
 
-func (s *state) statement() visitor {
-	if s.accept("let") {
-		return s.assignment()
-	} else if s.accept("print") {
-		return s.print()
-	} else if s.accept("if") {
-		return s.ifStatement()
+func (p *parser) statement() visitor {
+	if p.accept("let") {
+		return p.assignment()
+	} else if p.accept("print") {
+		return p.print()
+	} else if p.accept("if") {
+		return p.ifStatement()
 	} else {
-		s.expect("let|print")
+		p.expect("let|print")
 		return nil
 	}
 }
 
-func (s *state) assignment() *AssignmentStatement {
-	s.expect("let")
-	id := s.expect("id")
-	s.expect("=")
-	n := s.booleanExpression()
-	s.expect(";")
+func (p *parser) assignment() *AssignmentStatement {
+	p.expect("let")
+	id := p.expect("id")
+	p.expect("=")
+	n := p.booleanExpression()
+	p.expect(";")
 	return &AssignmentStatement{id, n}
 }
 
-func (s *state) print() *PrintStatement {
-	s.expect("print")
-	expression := s.booleanExpression()
-	s.expect(";")
+func (p *parser) print() *PrintStatement {
+	p.expect("print")
+	expression := p.booleanExpression()
+	p.expect(";")
 	return &PrintStatement{expression}
 }
 
-func (s *state) ifStatement() *IfStatement {
-	s.expect("if")
-	b := s.booleanExpression()
-	s.expect("{")
-	block := s.block()
-	s.expect("}")
+func (p *parser) ifStatement() *IfStatement {
+	p.expect("if")
+	b := p.booleanExpression()
+	p.expect("{")
+	block := p.block()
+	p.expect("}")
 	return &IfStatement{b, block}
 }
 
-func (s *state) booleanExpression() *BooleanExpression {
-	b := &BooleanExpression{s.andExpression(), "", nil}
+func (p *parser) booleanExpression() *BooleanExpression {
+	b := &BooleanExpression{p.andExpression(), "", nil}
 	for {
-		if s.accept("||") {
-			s.expect("||")
-			b = &BooleanExpression{b, "||", s.andExpression()}
+		if p.accept("||") {
+			p.expect("||")
+			b = &BooleanExpression{b, "||", p.andExpression()}
 		} else {
 			return b
 		}
 	}
 }
 
-func (s *state) andExpression() *BooleanExpression {
-	b := &BooleanExpression{s.condition(), "", nil}
+func (p *parser) andExpression() *BooleanExpression {
+	b := &BooleanExpression{p.condition(), "", nil}
 	for {
-		if s.accept("&&") {
-			s.expect("&&")
-			b = &BooleanExpression{b, "&&", s.condition()}
+		if p.accept("&&") {
+			p.expect("&&")
+			b = &BooleanExpression{b, "&&", p.condition()}
 		} else {
 			return b
 		}
 	}
 }
 
-func (s *state) condition() *BooleanExpression {
+func (p *parser) condition() *BooleanExpression {
 	var operator string
-	left := s.expression()
-	if s.accept("==") {
-		operator = s.expect("==")
-	} else if s.accept("!=") {
-		operator = s.expect("!=")
-	} else if s.accept(">=") {
-		operator = s.expect(">=")
-	} else if s.accept(">") {
-		operator = s.expect(">")
-	} else if s.accept("<") {
-		operator = s.expect("<")
-	} else if s.accept("<=") {
-		operator = s.expect("<=")
+	left := p.expression()
+	if p.accept("==") {
+		operator = p.expect("==")
+	} else if p.accept("!=") {
+		operator = p.expect("!=")
+	} else if p.accept(">=") {
+		operator = p.expect(">=")
+	} else if p.accept(">") {
+		operator = p.expect(">")
+	} else if p.accept("<") {
+		operator = p.expect("<")
+	} else if p.accept("<=") {
+		operator = p.expect("<=")
 	} else {
 		return &BooleanExpression{left, "", nil}
 	}
-	return &BooleanExpression{left, operator, s.expression()}
+	return &BooleanExpression{left, operator, p.expression()}
 }
 
-func (s *state) expression() visitor {
-	if s.accept("string") {
-		return &StringLiteral{s.expect("string")}
-	} else if s.accept("true") {
-		s.expect("true")
+func (p *parser) expression() visitor {
+	if p.accept("string") {
+		return &StringLiteral{p.expect("string")}
+	} else if p.accept("true") {
+		p.expect("true")
 		return &BooleanLiteral{true}
-	} else if s.accept("false") {
-		s.expect("false")
+	} else if p.accept("false") {
+		p.expect("false")
 		return &BooleanLiteral{false}
-	} else if s.accept("id") {
-		return &Identifier{s.expect("id")}
+	} else if p.accept("id") {
+		return &Identifier{p.expect("id")}
 	}
-	return s.mathExpression()
+	return p.mathExpression()
 }
 
-func (s *state) mathExpression() *MathExpression {
-	e := &MathExpression{s.term(), "", nil}
+func (p *parser) mathExpression() *MathExpression {
+	e := &MathExpression{p.term(), "", nil}
 	for {
-		if s.accept("+") {
-			s.expect("+")
-			e = &MathExpression{e, "+", s.term()}
-		} else if s.accept("-") {
-			s.expect("-")
-			e = &MathExpression{e, "-", s.term()}
+		if p.accept("+") {
+			p.expect("+")
+			e = &MathExpression{e, "+", p.term()}
+		} else if p.accept("-") {
+			p.expect("-")
+			e = &MathExpression{e, "-", p.term()}
 		} else {
 			return e
 		}
 	}
 }
 
-func (s *state) term() *Term {
-	t := &Term{s.atom(), "", nil}
+func (p *parser) term() *Term {
+	t := &Term{p.atom(), "", nil}
 	for {
-		if s.accept("*") {
-			s.expect("*")
-			t = &Term{t, "*", s.atom()}
-		} else if s.accept("/") {
-			s.expect("/")
-			t = &Term{t, "/", s.atom()}
+		if p.accept("*") {
+			p.expect("*")
+			t = &Term{t, "*", p.atom()}
+		} else if p.accept("/") {
+			p.expect("/")
+			t = &Term{t, "/", p.atom()}
 		} else {
 			return t
 		}
 	}
 }
 
-func (s *state) atom() visitor {
-	if s.accept("id") {
-		return &Identifier{s.expect("id")}
-	} else if s.accept("number") {
-		return &NumberLiteral{s.expect("number")}
-	} else if s.accept("(") {
-		s.expect("(")
-		n := s.booleanExpression()
-		s.expect(")")
+func (p *parser) atom() visitor {
+	if p.accept("id") {
+		return &Identifier{p.expect("id")}
+	} else if p.accept("number") {
+		return &NumberLiteral{p.expect("number")}
+	} else if p.accept("(") {
+		p.expect("(")
+		n := p.booleanExpression()
+		p.expect(")")
 		return n
-	} else if s.accept("!") {
-		return s.logicalNotExpression()
+	} else if p.accept("!") {
+		return p.logicalNotExpression()
 	} else {
-		s.expect("id|number")
+		p.expect("id|number")
 		return nil
 	}
 }
 
-func (s *state) logicalNotExpression() visitor {
-	s.expect("!")
-	return &LogicalNotExpression{s.booleanExpression()}
+func (p *parser) logicalNotExpression() visitor {
+	p.expect("!")
+	return &LogicalNotExpression{p.booleanExpression()}
 }
 
 // Parse executes the output from Lex
 func Parse(lexOut <-chan string) []visitor {
-	return newState(lexOut).block()
+	return newParser(lexOut).block()
 }
