@@ -6,15 +6,27 @@ type (
 		expression visitor
 	}
 
+	BooleanExpression struct {
+		left     visitor
+		operator string
+		right    visitor
+	}
+
+	BooleanLiteral struct {
+		value bool
+	}
+
 	Identifier struct {
 		value string
 	}
 
 	IfStatement struct {
-		left     visitor
-		operator string
-		right    visitor
-		block    []visitor
+		booleanExpression *BooleanExpression
+		block             []visitor
+	}
+
+	LogicalNotExpression struct {
+		booleanExpression *BooleanExpression
 	}
 
 	MathExpression struct {

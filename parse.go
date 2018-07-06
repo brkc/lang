@@ -84,21 +84,53 @@ func (s *state) assignment() *AssignmentStatement {
 	s.expect("let")
 	id := s.expect("id")
 	s.expect("=")
-	n := s.expression()
+	n := s.booleanExpression()
 	s.expect(";")
 	return &AssignmentStatement{id, n}
 }
 
 func (s *state) print() *PrintStatement {
 	s.expect("print")
-	expression := s.expression()
+	expression := s.booleanExpression()
 	s.expect(";")
 	return &PrintStatement{expression}
 }
 
 func (s *state) ifStatement() *IfStatement {
-	var operator string
 	s.expect("if")
+	b := s.booleanExpression()
+	s.expect("{")
+	block := s.block()
+	s.expect("}")
+	return &IfStatement{b, block}
+}
+
+func (s *state) booleanExpression() *BooleanExpression {
+	b := &BooleanExpression{s.andExpression(), "", nil}
+	for {
+		if s.accept("||") {
+			s.expect("||")
+			b = &BooleanExpression{b, "||", s.andExpression()}
+		} else {
+			return b
+		}
+	}
+}
+
+func (s *state) andExpression() *BooleanExpression {
+	b := &BooleanExpression{s.condition(), "", nil}
+	for {
+		if s.accept("&&") {
+			s.expect("&&")
+			b = &BooleanExpression{b, "&&", s.condition()}
+		} else {
+			return b
+		}
+	}
+}
+
+func (s *state) condition() *BooleanExpression {
+	var operator string
 	left := s.expression()
 	if s.accept("==") {
 		operator = s.expect("==")
@@ -112,17 +144,21 @@ func (s *state) ifStatement() *IfStatement {
 		operator = s.expect("<")
 	} else if s.accept("<=") {
 		operator = s.expect("<=")
+	} else {
+		return &BooleanExpression{left, "", nil}
 	}
-	right := s.expression()
-	s.expect("{")
-	block := s.block()
-	s.expect("}")
-	return &IfStatement{left, operator, right, block}
+	return &BooleanExpression{left, operator, s.expression()}
 }
 
 func (s *state) expression() visitor {
 	if s.accept("string") {
 		return &StringLiteral{s.expect("string")}
+	} else if s.accept("true") {
+		s.expect("true")
+		return &BooleanLiteral{true}
+	} else if s.accept("false") {
+		s.expect("false")
+		return &BooleanLiteral{false}
 	} else if s.accept("id") {
 		return &Identifier{s.expect("id")}
 	}
@@ -166,13 +202,20 @@ func (s *state) atom() visitor {
 		return &NumberLiteral{s.expect("number")}
 	} else if s.accept("(") {
 		s.expect("(")
-		n := s.mathExpression()
+		n := s.booleanExpression()
 		s.expect(")")
 		return n
+	} else if s.accept("!") {
+		return s.logicalNotExpression()
 	} else {
 		s.expect("id|number")
 		return nil
 	}
+}
+
+func (s *state) logicalNotExpression() visitor {
+	s.expect("!")
+	return &LogicalNotExpression{s.booleanExpression()}
 }
 
 // Parse executes the output from Lex

@@ -11,20 +11,35 @@ statement
   ;
 
 assignment
-  : 'let' Id '=' expression ';'
+  : 'let' Id '=' booleanExpression ';'
   ;
 
 print
-  : 'print' expression ';'
+  : 'print' booleanExpression ';'
   ;
 
 ifStatement
-  : 'if' expression ('=='|'!='|'>='|'>'|'<'|'<=') expression '{' block '}'
+  : 'if' booleanExpression '{' block '}'
+  ;
+
+booleanExpression
+  : andExpression ('||' andExpression)*
+  ;
+
+andExpression
+  : condition ('&&' condition)*
+  ;
+
+condition
+  : expression (('=='|'!='|'>='|'>'|'<'|'<=') expression)?
   ;
 
 expression
   : String
-  | mathExpression;
+  | mathExpression
+  | ('true'|'false')
+  | Id
+  ;
 
 mathExpression
   : term (('+'|'-') term)*
@@ -37,7 +52,12 @@ term
 atom
   : Id
   | Number
-  | '(' expression ')'
+  | '(' booleanExpression ')'
+  | logicalNotExpression
+  ;
+
+logicalNotExpression
+  : '!' booleanExpression
   ;
 
 Id: [a-z]+;
