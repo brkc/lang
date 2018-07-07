@@ -91,7 +91,7 @@ func (lex *lexer) consumeString() {
 
 func (lex *lexer) lex() {
 	for lex.hasMore() {
-		lex.consume("let", "let")
+		lex.consume("var", "var")
 		lex.consume("print", "print")
 		lex.consume("if", "if")
 		lex.consume("true", "true")

@@ -11,7 +11,7 @@ statement
   ;
 
 assignment
-  : 'let' Id '=' booleanExpression ';'
+  : 'var' Id '=' booleanExpression ';'
   ;
 
 print

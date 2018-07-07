@@ -68,20 +68,20 @@ func (p *parser) block() []visitor {
 }
 
 func (p *parser) statement() visitor {
-	if p.accept("let") {
+	if p.accept("var") {
 		return p.assignment()
 	} else if p.accept("print") {
 		return p.print()
 	} else if p.accept("if") {
 		return p.ifStatement()
 	} else {
-		p.expect("let|print")
+		p.expect("var|print|if")
 		return nil
 	}
 }
 
 func (p *parser) assignment() *AssignmentStatement {
-	p.expect("let")
+	p.expect("var")
 	id := p.expect("id")
 	p.expect("=")
 	n := p.booleanExpression()

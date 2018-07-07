@@ -1,2 +1,2 @@
-let s = "hello";
+var s = "hello";
 print s;
