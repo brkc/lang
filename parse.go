@@ -69,19 +69,31 @@ func (p *parser) block() []visitor {
 
 func (p *parser) statement() visitor {
 	if p.accept("var") {
+		return p.declaration()
+	} else if p.accept("id") {
 		return p.assignment()
 	} else if p.accept("print") {
 		return p.print()
 	} else if p.accept("if") {
 		return p.ifStatement()
+	} else if p.accept("while") {
+		return p.whileStatement()
 	} else {
-		p.expect("var|print|if")
+		p.expect("var|print|if|while")
 		return nil
 	}
 }
 
-func (p *parser) assignment() *AssignmentStatement {
+func (p *parser) declaration() *DeclarationStatement {
 	p.expect("var")
+	id := p.expect("id")
+	p.expect("=")
+	n := p.booleanExpression()
+	p.expect(";")
+	return &DeclarationStatement{id, n}
+}
+
+func (p *parser) assignment() *AssignmentStatement {
 	id := p.expect("id")
 	p.expect("=")
 	n := p.booleanExpression()
@@ -103,6 +115,15 @@ func (p *parser) ifStatement() *IfStatement {
 	block := p.block()
 	p.expect("}")
 	return &IfStatement{b, block}
+}
+
+func (p *parser) whileStatement() *WhileStatement {
+	p.expect("while")
+	b := p.booleanExpression()
+	p.expect("{")
+	block := p.block()
+	p.expect("}")
+	return &WhileStatement{b, block}
 }
 
 func (p *parser) booleanExpression() *BooleanExpression {
@@ -150,30 +171,15 @@ func (p *parser) condition() *BooleanExpression {
 	return &BooleanExpression{left, operator, p.expression()}
 }
 
-func (p *parser) expression() visitor {
-	if p.accept("string") {
-		return &StringLiteral{p.expect("string")}
-	} else if p.accept("true") {
-		p.expect("true")
-		return &BooleanLiteral{true}
-	} else if p.accept("false") {
-		p.expect("false")
-		return &BooleanLiteral{false}
-	} else if p.accept("id") {
-		return &Identifier{p.expect("id")}
-	}
-	return p.mathExpression()
-}
-
-func (p *parser) mathExpression() *MathExpression {
-	e := &MathExpression{p.term(), "", nil}
+func (p *parser) expression() *Expression {
+	e := &Expression{p.term(), "", nil}
 	for {
 		if p.accept("+") {
 			p.expect("+")
-			e = &MathExpression{e, "+", p.term()}
+			e = &Expression{e, "+", p.term()}
 		} else if p.accept("-") {
 			p.expect("-")
-			e = &MathExpression{e, "-", p.term()}
+			e = &Expression{e, "-", p.term()}
 		} else {
 			return e
 		}
@@ -195,11 +201,27 @@ func (p *parser) term() *Term {
 	}
 }
 
+func (p *parser) logicalNotExpression() visitor {
+	if p.accept("!") {
+		p.expect("!")
+		return &LogicalNotExpression{p.logicalNotExpression()}
+	}
+	return p.atom()
+}
+
 func (p *parser) atom() visitor {
 	if p.accept("id") {
 		return &Identifier{p.expect("id")}
 	} else if p.accept("number") {
 		return &NumberLiteral{p.expect("number")}
+	} else if p.accept("string") {
+		return &StringLiteral{p.expect("string")}
+	} else if p.accept("true") {
+		p.expect("true")
+		return &BooleanLiteral{true}
+	} else if p.accept("false") {
+		p.expect("false")
+		return &BooleanLiteral{false}
 	} else if p.accept("(") {
 		p.expect("(")
 		n := p.booleanExpression()
@@ -211,11 +233,6 @@ func (p *parser) atom() visitor {
 		p.expect("id|number")
 		return nil
 	}
-}
-
-func (p *parser) logicalNotExpression() visitor {
-	p.expect("!")
-	return &LogicalNotExpression{p.booleanExpression()}
 }
 
 // Parse executes the output from Lex

@@ -16,6 +16,17 @@ type (
 		value bool
 	}
 
+	DeclarationStatement struct {
+		id         string
+		expression visitor
+	}
+
+	Expression struct {
+		left     visitor
+		operator string
+		right    visitor
+	}
+
 	Identifier struct {
 		value string
 	}
@@ -26,13 +37,7 @@ type (
 	}
 
 	LogicalNotExpression struct {
-		booleanExpression *BooleanExpression
-	}
-
-	MathExpression struct {
-		left     visitor
-		operator string
-		right    visitor
+		booleanExpression visitor
 	}
 
 	NumberLiteral struct {
@@ -55,5 +60,10 @@ type (
 
 	visitor interface {
 		visit() *adt
+	}
+
+	WhileStatement struct {
+		booleanExpression *BooleanExpression
+		block             []visitor
 	}
 )

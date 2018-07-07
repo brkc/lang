@@ -5,13 +5,19 @@ block
   ;
 
 statement
-  : assignment
+  : declaration
+  | assignment
   | print
   | ifStatement
+  | whileStatement
+  ;
+
+declaration
+  : 'var' Id '=' booleanExpression ';'
   ;
 
 assignment
-  : 'var' Id '=' booleanExpression ';'
+  : Id '=' booleanExpression ';'
   ;
 
 print
@@ -20,6 +26,10 @@ print
 
 ifStatement
   : 'if' booleanExpression '{' block '}'
+  ;
+
+whileStatement
+  : 'while' booleanExpression '{' block '}'
   ;
 
 booleanExpression
@@ -35,13 +45,6 @@ condition
   ;
 
 expression
-  : String
-  | mathExpression
-  | ('true'|'false')
-  | Id
-  ;
-
-mathExpression
   : term (('+'|'-') term)*
   ;
 
@@ -49,15 +52,17 @@ term
   : atom (('*'|'/') atom)*
   ;
 
+logicalNotExpression
+  : '!' logicalNotExpression
+  | atom
+  ;
+
 atom
   : Id
   | Number
+  | String
+  | ('true'|'false')
   | '(' booleanExpression ')'
-  | logicalNotExpression
-  ;
-
-logicalNotExpression
-  : '!' booleanExpression
   ;
 
 Id: [a-z]+;

@@ -35,6 +35,11 @@ func Interpret(s string) {
 	}
 }
 
+func (a *DeclarationStatement) visit() *adt {
+	variables[a.id] = a.expression.visit()
+	return nil
+}
+
 func (a *AssignmentStatement) visit() *adt {
 	variables[a.id] = a.expression.visit()
 	return nil
@@ -60,6 +65,20 @@ func (i *IfStatement) visit() *adt {
 	b := i.booleanExpression.visit()
 	typeCheck(booleanType, b)
 	if b.value.(bool) {
+		for _, s := range i.block {
+			s.visit()
+		}
+	}
+	return nil
+}
+
+func (i *WhileStatement) visit() *adt {
+	for {
+		b := i.booleanExpression.visit()
+		typeCheck(booleanType, b)
+		if !b.value.(bool) {
+			break
+		}
 		for _, s := range i.block {
 			s.visit()
 		}
@@ -156,7 +175,7 @@ func evaluateBooleanComparison(left bool, operator string, right bool) *adt {
 	return &adt{booleanType, b}
 }
 
-func (e *MathExpression) visit() *adt {
+func (e *Expression) visit() *adt {
 	left := e.left.visit()
 	if e.right != nil {
 		right := e.right.visit()

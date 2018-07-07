@@ -94,6 +94,7 @@ func (lex *lexer) lex() {
 		lex.consume("var", "var")
 		lex.consume("print", "print")
 		lex.consume("if", "if")
+		lex.consume("while", "while")
 		lex.consume("true", "true")
 		lex.consume("false", "false")
 		lex.consume("==", "==")
