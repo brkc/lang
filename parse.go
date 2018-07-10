@@ -8,11 +8,11 @@ import (
 )
 
 type parser struct {
-	token  *tokenInfo
+	token  *token
 	lexOut <-chan string
 }
 
-type tokenInfo struct {
+type token struct {
 	symbol string
 	line   int
 	column int
@@ -23,26 +23,26 @@ func newParser(lexOut <-chan string) *parser {
 	return &parser{newTokenInfo(lexOut), lexOut}
 }
 
-func newTokenInfo(lexOut <-chan string) *tokenInfo {
+func newTokenInfo(lexOut <-chan string) *token {
 	var err error
 	text := <-lexOut
 	fields := regexp.MustCompile(" ").Split(text, 4)
-	tokenInfo := &tokenInfo{}
-	tokenInfo.symbol = fields[0]
-	tokenInfo.line, err = strconv.Atoi(fields[1])
+	token := &token{}
+	token.symbol = fields[0]
+	token.line, err = strconv.Atoi(fields[1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "err reading token: %s\n", err)
 		os.Exit(1)
 	}
-	tokenInfo.column, err = strconv.Atoi(fields[2])
+	token.column, err = strconv.Atoi(fields[2])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "err reading token: %s\n", err)
 		os.Exit(1)
 	}
 	if len(fields) == 4 {
-		tokenInfo.value = fields[3]
+		token.value = fields[3]
 	}
-	return tokenInfo
+	return token
 }
 
 func (p *parser) accept(expected string) bool {
@@ -59,100 +59,174 @@ func (p *parser) expect(expected string) string {
 	return value
 }
 
-func (p *parser) block() []visitor {
-	statements := make([]visitor, 0)
+func (p *parser) block() *block {
+	var statements []statementVisitor
 	for !p.accept("eof") && !p.accept("}") {
 		statements = append(statements, p.statement())
 	}
-	return statements
+	return &block{statements}
 }
 
-func (p *parser) statement() visitor {
+func (p *parser) statement() statementVisitor {
 	if p.accept("var") {
 		return p.declaration()
-	} else if p.accept("id") {
-		return p.assignment()
 	} else if p.accept("print") {
 		return p.print()
 	} else if p.accept("if") {
 		return p.ifStatement()
 	} else if p.accept("while") {
 		return p.whileStatement()
+	} else if p.accept("break") {
+		return p.breakStatement()
+	} else if p.accept("continue") {
+		return p.continueStatement()
+	} else if p.accept("def") {
+		return p.functionStatement()
+	} else if p.accept("return") {
+		return p.returnStatement()
+	} else if p.accept("id") {
+		var v statementVisitor
+		id := p.expect("id")
+		if p.accept("=") {
+			v = p.assignment(id)
+		} else if p.accept("(") {
+			v = p.callExpression(id)
+		}
+		p.expect(";")
+		return v
 	} else {
-		p.expect("var|print|if|while")
+		p.expect("var|print|if|while|def|return")
 		return nil
 	}
 }
 
-func (p *parser) declaration() *DeclarationStatement {
+func (p *parser) declaration() *declarationStatement {
 	p.expect("var")
 	id := p.expect("id")
 	p.expect("=")
 	n := p.booleanExpression()
 	p.expect(";")
-	return &DeclarationStatement{id, n}
+	return &declarationStatement{id, n}
 }
 
-func (p *parser) assignment() *AssignmentStatement {
-	id := p.expect("id")
-	p.expect("=")
-	n := p.booleanExpression()
-	p.expect(";")
-	return &AssignmentStatement{id, n}
-}
-
-func (p *parser) print() *PrintStatement {
+func (p *parser) print() *printStatement {
 	p.expect("print")
 	expression := p.booleanExpression()
 	p.expect(";")
-	return &PrintStatement{expression}
+	return &printStatement{expression}
 }
 
-func (p *parser) ifStatement() *IfStatement {
+func (p *parser) ifStatement() *ifStatement {
 	p.expect("if")
 	b := p.booleanExpression()
 	p.expect("{")
 	block := p.block()
 	p.expect("}")
-	return &IfStatement{b, block}
+	return &ifStatement{b, block}
 }
 
-func (p *parser) whileStatement() *WhileStatement {
+func (p *parser) whileStatement() *whileStatement {
 	p.expect("while")
 	b := p.booleanExpression()
 	p.expect("{")
 	block := p.block()
 	p.expect("}")
-	return &WhileStatement{b, block}
+	return &whileStatement{b, block}
 }
 
-func (p *parser) booleanExpression() *BooleanExpression {
-	b := &BooleanExpression{p.andExpression(), "", nil}
+func (p *parser) breakStatement() *breakStatement {
+	p.expect("break")
+	p.expect(";")
+	return &breakStatement{}
+}
+
+func (p *parser) continueStatement() *continueStatement {
+	p.expect("continue")
+	p.expect(";")
+	return &continueStatement{}
+}
+
+func (p *parser) functionStatement() *functionStatement {
+	var parameters []string
+	p.expect("def")
+	name := p.expect("id")
+	p.expect("(")
+	if p.accept("id") {
+		parameters = append(parameters, p.expect("id"))
+		for {
+			if !p.accept(",") {
+				break
+			}
+			p.expect(",")
+			parameters = append(parameters, p.expect("id"))
+		}
+	}
+	p.expect(")")
+	p.expect("{")
+	block := p.block()
+	p.expect("}")
+	return &functionStatement{name, parameters, block}
+}
+
+func (p *parser) returnStatement() *returnStatement {
+	p.expect("return")
+	if p.accept(";") {
+		p.expect(";")
+		return &returnStatement{nil}
+	}
+	b := p.booleanExpression()
+	p.expect(";")
+	return &returnStatement{b}
+}
+
+func (p *parser) assignment(id string) *assignmentStatement {
+	p.expect("=")
+	return &assignmentStatement{id, p.booleanExpression()}
+}
+
+func (p *parser) callExpression(id string) *callExpression {
+	var arguments []*booleanExpression
+	p.expect("(")
+	for {
+		if p.accept(")") {
+			break
+		}
+		arguments = append(arguments, p.booleanExpression())
+		if !p.accept(")") {
+			p.expect(",")
+		}
+	}
+	p.expect(")")
+	return &callExpression{id, arguments}
+}
+
+func (p *parser) booleanExpression() *booleanExpression {
+	b := &booleanExpression{p.andExpression(), "", nil}
 	for {
 		if p.accept("||") {
 			p.expect("||")
-			b = &BooleanExpression{b, "||", p.andExpression()}
+			b = &booleanExpression{b, "||", p.andExpression()}
 		} else {
 			return b
 		}
 	}
 }
 
-func (p *parser) andExpression() *BooleanExpression {
-	b := &BooleanExpression{p.condition(), "", nil}
+func (p *parser) andExpression() *booleanExpression {
+	b := &booleanExpression{p.condition(), "", nil}
 	for {
 		if p.accept("&&") {
 			p.expect("&&")
-			b = &BooleanExpression{b, "&&", p.condition()}
+			b = &booleanExpression{b, "&&", p.condition()}
 		} else {
 			return b
 		}
 	}
 }
 
-func (p *parser) condition() *BooleanExpression {
+func (p *parser) condition() *booleanExpression {
 	var operator string
-	left := p.expression()
+	left := p.logicalOperand()
 	if p.accept("==") {
 		operator = p.expect("==")
 	} else if p.accept("!=") {
@@ -166,76 +240,77 @@ func (p *parser) condition() *BooleanExpression {
 	} else if p.accept("<=") {
 		operator = p.expect("<=")
 	} else {
-		return &BooleanExpression{left, "", nil}
+		return &booleanExpression{left, "", nil}
 	}
-	return &BooleanExpression{left, operator, p.expression()}
+	return &booleanExpression{left, operator, p.logicalOperand()}
 }
 
-func (p *parser) expression() *Expression {
-	e := &Expression{p.term(), "", nil}
+func (p *parser) logicalOperand() *logicalOperand {
+	e := &logicalOperand{p.term(), "", nil}
 	for {
 		if p.accept("+") {
 			p.expect("+")
-			e = &Expression{e, "+", p.term()}
+			e = &logicalOperand{e, "+", p.term()}
 		} else if p.accept("-") {
 			p.expect("-")
-			e = &Expression{e, "-", p.term()}
+			e = &logicalOperand{e, "-", p.term()}
 		} else {
 			return e
 		}
 	}
 }
 
-func (p *parser) term() *Term {
-	t := &Term{p.atom(), "", nil}
+func (p *parser) term() *term {
+	t := &term{p.logicalNotExpression(), "", nil}
 	for {
 		if p.accept("*") {
 			p.expect("*")
-			t = &Term{t, "*", p.atom()}
+			t = &term{t, "*", p.logicalNotExpression()}
 		} else if p.accept("/") {
 			p.expect("/")
-			t = &Term{t, "/", p.atom()}
+			t = &term{t, "/", p.logicalNotExpression()}
 		} else {
 			return t
 		}
 	}
 }
 
-func (p *parser) logicalNotExpression() visitor {
+func (p *parser) logicalNotExpression() expressionVisitor {
 	if p.accept("!") {
 		p.expect("!")
-		return &LogicalNotExpression{p.logicalNotExpression()}
+		return &logicalNotExpression{p.logicalNotExpression()}
 	}
 	return p.atom()
 }
 
-func (p *parser) atom() visitor {
+func (p *parser) atom() expressionVisitor {
 	if p.accept("id") {
-		return &Identifier{p.expect("id")}
+		id := p.expect("id")
+		if p.accept("(") {
+			return p.callExpression(id)
+		}
+		return &identifier{id}
 	} else if p.accept("number") {
-		return &NumberLiteral{p.expect("number")}
+		return &numberLiteral{p.expect("number")}
 	} else if p.accept("string") {
-		return &StringLiteral{p.expect("string")}
+		return &stringLiteral{p.expect("string")}
 	} else if p.accept("true") {
 		p.expect("true")
-		return &BooleanLiteral{true}
+		return &booleanLiteral{true}
 	} else if p.accept("false") {
 		p.expect("false")
-		return &BooleanLiteral{false}
+		return &booleanLiteral{false}
 	} else if p.accept("(") {
 		p.expect("(")
 		n := p.booleanExpression()
 		p.expect(")")
 		return n
-	} else if p.accept("!") {
-		return p.logicalNotExpression()
 	} else {
-		p.expect("id|number")
+		p.expect("id|number|string|true|false")
 		return nil
 	}
 }
 
-// Parse executes the output from Lex
-func Parse(lexOut <-chan string) []visitor {
+func parse(lexOut <-chan string) *block {
 	return newParser(lexOut).block()
 }

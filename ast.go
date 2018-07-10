@@ -1,69 +1,98 @@
 package main
 
 type (
-	AssignmentStatement struct {
+	assignmentStatement struct {
 		id         string
-		expression visitor
+		expression expressionVisitor
 	}
 
-	BooleanExpression struct {
-		left     visitor
+	block struct {
+		statements []statementVisitor
+	}
+
+	booleanExpression struct {
+		left     expressionVisitor
 		operator string
-		right    visitor
+		right    expressionVisitor
 	}
 
-	BooleanLiteral struct {
+	booleanLiteral struct {
 		value bool
 	}
 
-	DeclarationStatement struct {
+	breakStatement struct {
+	}
+
+	callExpression struct {
+		name      string
+		arguments []*booleanExpression
+	}
+
+	continueStatement struct {
+	}
+
+	declarationStatement struct {
 		id         string
-		expression visitor
+		expression expressionVisitor
 	}
 
-	Expression struct {
-		left     visitor
+	expressionVisitor interface {
+		visitExpression() *expression
+	}
+
+	functionStatement struct {
+		name       string
+		parameters []string
+		block      *block
+	}
+
+	identifier struct {
+		value string
+	}
+
+	ifStatement struct {
+		booleanExpression *booleanExpression
+		block             *block
+	}
+
+	logicalNotExpression struct {
+		booleanExpression expressionVisitor
+	}
+
+	logicalOperand struct {
+		left     expressionVisitor
 		operator string
-		right    visitor
+		right    expressionVisitor
 	}
 
-	Identifier struct {
+	numberLiteral struct {
 		value string
 	}
 
-	IfStatement struct {
-		booleanExpression *BooleanExpression
-		block             []visitor
+	printStatement struct {
+		expression expressionVisitor
 	}
 
-	LogicalNotExpression struct {
-		booleanExpression visitor
+	returnStatement struct {
+		expression expressionVisitor
 	}
 
-	NumberLiteral struct {
+	statementVisitor interface {
+		visitStatement() *statement
+	}
+
+	stringLiteral struct {
 		value string
 	}
 
-	PrintStatement struct {
-		expression visitor
-	}
-
-	StringLiteral struct {
-		value string
-	}
-
-	Term struct {
-		left     visitor
+	term struct {
+		left     expressionVisitor
 		operator string
-		right    visitor
+		right    expressionVisitor
 	}
 
-	visitor interface {
-		visit() *adt
-	}
-
-	WhileStatement struct {
-		booleanExpression *BooleanExpression
-		block             []visitor
+	whileStatement struct {
+		booleanExpression *booleanExpression
+		block             *block
 	}
 )

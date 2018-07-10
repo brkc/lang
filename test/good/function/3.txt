@@ -1,0 +1,11 @@
+def number(n) {
+  var i = 0;
+  while true {
+    if i == n {
+      return n;
+    }
+    i = i + 1;
+  }
+}
+
+print number(5);

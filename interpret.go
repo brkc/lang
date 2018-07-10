@@ -7,46 +7,62 @@ import (
 )
 
 type (
-	adt struct {
-		typeValue builtinType
+	expression struct {
+		typeValue expressionType
 		value     interface{}
 	}
-	builtinType int
+	expressionType int
+	statement      struct {
+		typeValue  statementType
+		expression *expression
+	}
+	statementType int
 )
 
 const (
-	numberType builtinType = 1 << iota
+	assignmentType statementType = 1 << iota
+	blockType
+	breakType
+	callType
+	continueType
+	declarationType
+	functionType
+	ifType
+	printType
+	returnType
+	whileType
+
+	booleanType expressionType = 1 << iota
+	numberType
 	stringType
-	booleanType
 )
 
 var (
-	types = map[builtinType]string{
+	functions = map[string]*functionStatement{}
+	types     = map[expressionType]string{
 		numberType:  "number",
 		stringType:  "string",
 		booleanType: "boolean",
 	}
-	variables = map[string]*adt{}
+	variables = map[string]*expression{}
 )
 
-func Interpret(s string) {
-	for _, s := range Parse(Lex(s)) {
-		s.visit()
-	}
+func interpret(s string) {
+	parse(lex(s)).visitStatement()
 }
 
-func (a *DeclarationStatement) visit() *adt {
-	variables[a.id] = a.expression.visit()
-	return nil
+func (a *declarationStatement) visitStatement() *statement {
+	variables[a.id] = a.expression.visitExpression()
+	return &statement{declarationType, nil}
 }
 
-func (a *AssignmentStatement) visit() *adt {
-	variables[a.id] = a.expression.visit()
-	return nil
+func (a *assignmentStatement) visitStatement() *statement {
+	variables[a.id] = a.expression.visitExpression()
+	return &statement{assignmentType, nil}
 }
 
-func (p *PrintStatement) visit() *adt {
-	v := p.expression.visit()
+func (p *printStatement) visitStatement() *statement {
+	v := p.expression.visitExpression()
 	switch v.typeValue {
 	case stringType:
 		fmt.Printf("%s\n", v.value.(string))
@@ -58,49 +74,80 @@ func (p *PrintStatement) visit() *adt {
 		fmt.Fprintf(os.Stderr, "unexpected type %s\n", types[v.typeValue])
 		os.Exit(1)
 	}
-	return nil
+	return &statement{printType, nil}
 }
 
-func (i *IfStatement) visit() *adt {
-	b := i.booleanExpression.visit()
+func (i *ifStatement) visitStatement() *statement {
+	b := i.booleanExpression.visitExpression()
 	typeCheck(booleanType, b)
 	if b.value.(bool) {
-		for _, s := range i.block {
-			s.visit()
-		}
+		return i.block.visitStatement()
 	}
-	return nil
+	return &statement{ifType, nil}
 }
 
-func (i *WhileStatement) visit() *adt {
+func (i *whileStatement) visitStatement() *statement {
 	for {
-		b := i.booleanExpression.visit()
+		b := i.booleanExpression.visitExpression()
 		typeCheck(booleanType, b)
 		if !b.value.(bool) {
 			break
 		}
-		for _, s := range i.block {
-			s.visit()
+		v := i.block.visitStatement()
+		switch v.typeValue {
+		case breakType, returnType:
+			return v
 		}
 	}
-	return nil
+	return &statement{whileType, nil}
 }
 
-func (b *BooleanExpression) visit() *adt {
-	left := b.left.visit()
+func (i *breakStatement) visitStatement() *statement {
+	return &statement{breakType, nil}
+}
+
+func (i *continueStatement) visitStatement() *statement {
+	return &statement{continueType, nil}
+}
+
+func (f *functionStatement) visitStatement() *statement {
+	functions[f.name] = f
+	return &statement{functionType, nil}
+}
+
+func (r *returnStatement) visitStatement() *statement {
+	return &statement{returnType, r.expression.visitExpression()}
+}
+
+func (b *block) visitStatement() *statement {
+	for _, s := range b.statements {
+		v := s.visitStatement()
+		if v == nil {
+			continue
+		}
+		switch v.typeValue {
+		case returnType:
+			return v
+		}
+	}
+	return &statement{blockType, nil}
+}
+
+func (b *booleanExpression) visitExpression() *expression {
+	left := b.left.visitExpression()
 	if b.right == nil {
 		return left
 	}
-	right := b.right.visit()
+	right := b.right.visitExpression()
 	expectSameType(left, right)
 
 	switch b.operator {
 	case "&&":
 		typeCheck(booleanType, left, right)
-		return &adt{booleanType, left.value.(bool) && right.value.(bool)}
+		return &expression{booleanType, left.value.(bool) && right.value.(bool)}
 	case "||":
 		typeCheck(booleanType, left, right)
-		return &adt{booleanType, left.value.(bool) || right.value.(bool)}
+		return &expression{booleanType, left.value.(bool) || right.value.(bool)}
 	}
 
 	switch left.typeValue {
@@ -114,10 +161,10 @@ func (b *BooleanExpression) visit() *adt {
 		fmt.Fprintln(os.Stderr, "unrecognized type")
 		os.Exit(1)
 	}
-	return &adt{booleanType, false}
+	return &expression{booleanType, false}
 }
 
-func evaluateNumberComparison(left int, operator string, right int) *adt {
+func evaluateNumberComparison(left int, operator string, right int) *expression {
 	var b bool
 	switch operator {
 	case "==":
@@ -136,10 +183,10 @@ func evaluateNumberComparison(left int, operator string, right int) *adt {
 		fmt.Fprintln(os.Stderr, "unrecognized operator")
 		os.Exit(1)
 	}
-	return &adt{booleanType, b}
+	return &expression{booleanType, b}
 }
 
-func evaluateStringComparison(left string, operator string, right string) *adt {
+func evaluateStringComparison(left string, operator string, right string) *expression {
 	var b bool
 	switch operator {
 	case "==":
@@ -158,10 +205,10 @@ func evaluateStringComparison(left string, operator string, right string) *adt {
 		fmt.Fprintln(os.Stderr, "unrecognized operator")
 		os.Exit(1)
 	}
-	return &adt{booleanType, b}
+	return &expression{booleanType, b}
 }
 
-func evaluateBooleanComparison(left bool, operator string, right bool) *adt {
+func evaluateBooleanComparison(left bool, operator string, right bool) *expression {
 	var b bool
 	switch operator {
 	case "==":
@@ -172,67 +219,87 @@ func evaluateBooleanComparison(left bool, operator string, right bool) *adt {
 		fmt.Fprintln(os.Stderr, "unrecognized operator")
 		os.Exit(1)
 	}
-	return &adt{booleanType, b}
+	return &expression{booleanType, b}
 }
 
-func (e *Expression) visit() *adt {
-	left := e.left.visit()
+func (e *logicalOperand) visitExpression() *expression {
+	left := e.left.visitExpression()
 	if e.right != nil {
-		right := e.right.visit()
+		right := e.right.visitExpression()
 		typeCheck(numberType, left, right)
 		switch e.operator {
 		case "+":
-			return &adt{numberType, left.value.(int) + right.value.(int)}
+			return &expression{numberType, left.value.(int) + right.value.(int)}
 		case "-":
-			return &adt{numberType, left.value.(int) - right.value.(int)}
+			return &expression{numberType, left.value.(int) - right.value.(int)}
 		}
 	}
-	return e.left.visit()
+	return e.left.visitExpression()
 }
 
-func (t *Term) visit() *adt {
-	left := t.left.visit()
+func (t *term) visitExpression() *expression {
+	left := t.left.visitExpression()
 	if t.right != nil {
-		right := t.right.visit()
+		right := t.right.visitExpression()
 		typeCheck(numberType, left, right)
 		switch t.operator {
 		case "*":
-			return &adt{numberType, left.value.(int) * right.value.(int)}
+			return &expression{numberType, left.value.(int) * right.value.(int)}
 		case "/":
-			return &adt{numberType, left.value.(int) / right.value.(int)}
+			return &expression{numberType, left.value.(int) / right.value.(int)}
 		}
 	}
-	return t.left.visit()
+	return t.left.visitExpression()
 }
 
-func (e *LogicalNotExpression) visit() *adt {
-	b := e.booleanExpression.visit()
+func (e *logicalNotExpression) visitExpression() *expression {
+	b := e.booleanExpression.visitExpression()
 	typeCheck(booleanType, b)
-	return &adt{booleanType, !b.value.(bool)}
+	return &expression{booleanType, !b.value.(bool)}
 }
 
-func (i *Identifier) visit() *adt {
+func (c *callExpression) visitExpression() *expression {
+	f := functions[c.name]
+	for i, p := range f.parameters {
+		variables[p] = c.arguments[i].visitExpression()
+	}
+	v := f.block.visitStatement()
+	for _, p := range f.parameters {
+		delete(variables, p)
+	}
+	switch v.typeValue {
+	case returnType:
+		return v.expression
+	}
+	return nil
+}
+
+func (c *callExpression) visitStatement() *statement {
+	return &statement{callType, c.visitExpression()}
+}
+
+func (i *identifier) visitExpression() *expression {
 	return variables[i.value]
 }
 
-func (nl *NumberLiteral) visit() *adt {
+func (nl *numberLiteral) visitExpression() *expression {
 	n, err := strconv.Atoi(nl.value)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "expected number")
 		os.Exit(1)
 	}
-	return &adt{numberType, n}
+	return &expression{numberType, n}
 }
 
-func (s *StringLiteral) visit() *adt {
-	return &adt{stringType, s.value}
+func (s *stringLiteral) visitExpression() *expression {
+	return &expression{stringType, s.value}
 }
 
-func (b *BooleanLiteral) visit() *adt {
-	return &adt{booleanType, b.value}
+func (b *booleanLiteral) visitExpression() *expression {
+	return &expression{booleanType, b.value}
 }
 
-func typeCheck(b builtinType, args ...*adt) {
+func typeCheck(b expressionType, args ...*expression) {
 	for _, arg := range args {
 		if arg.typeValue != b {
 			fmt.Fprintf(os.Stderr, "type mismatch: %s != %s\n", types[arg.typeValue], types[b])
@@ -241,8 +308,8 @@ func typeCheck(b builtinType, args ...*adt) {
 	}
 }
 
-func expectSameType(args ...*adt) {
-	var firstType builtinType
+func expectSameType(args ...*expression) {
+	var firstType expressionType
 	for _, arg := range args {
 		if firstType == 0 {
 			firstType = arg.typeValue

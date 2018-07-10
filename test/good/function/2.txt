@@ -1,0 +1,5 @@
+def message() {
+  return "hello";
+}
+
+print message();

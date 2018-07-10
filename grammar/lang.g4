@@ -6,18 +6,17 @@ block
 
 statement
   : declaration
-  | assignment
   | print
   | ifStatement
   | whileStatement
+  | functionStatement
+  | returnStatement
+  | assignment
+  | callExpression
   ;
 
 declaration
   : 'var' Id '=' booleanExpression ';'
-  ;
-
-assignment
-  : Id '=' booleanExpression ';'
   ;
 
 print
@@ -32,6 +31,22 @@ whileStatement
   : 'while' booleanExpression '{' block '}'
   ;
 
+functionStatement
+  : 'def' Id '(' (Id (',' Id)?)? ')' '{' block '}'
+  ;
+
+returnStatement
+  : 'return' booleanExpression ';'
+  ;
+
+assignment
+  : Id '=' booleanExpression ';'
+  ;
+
+callExpression
+  : Id '(' (booleanExpression (',' booleanExpression)?)? ')'
+  ;
+
 booleanExpression
   : andExpression ('||' andExpression)*
   ;
@@ -41,15 +56,15 @@ andExpression
   ;
 
 condition
-  : expression (('=='|'!='|'>='|'>'|'<'|'<=') expression)?
+  : logicalOperand (('=='|'!='|'>='|'>'|'<'|'<=') logicalOperand)?
   ;
 
-expression
+logicalOperand
   : term (('+'|'-') term)*
   ;
 
 term
-  : atom (('*'|'/') atom)*
+  : logicalNotExpression (('*'|'/') logicalNotExpression)*
   ;
 
 logicalNotExpression

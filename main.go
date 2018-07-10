@@ -10,5 +10,5 @@ func main() {
 		fmt.Fprintln(os.Stderr, "missing file")
 		os.Exit(2)
 	}
-	Interpret(os.Args[1])
+	interpret(os.Args[1])
 }

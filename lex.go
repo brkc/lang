@@ -95,6 +95,10 @@ func (lex *lexer) lex() {
 		lex.consume("print", "print")
 		lex.consume("if", "if")
 		lex.consume("while", "while")
+		lex.consume("break", "break")
+		lex.consume("continue", "continue")
+		lex.consume("def", "def")
+		lex.consume("return", "return")
 		lex.consume("true", "true")
 		lex.consume("false", "false")
 		lex.consume("==", "==")
@@ -111,7 +115,7 @@ func (lex *lexer) lex() {
 		} else if c == ';' {
 			lex.emit(";")
 			lex.newLine()
-		} else if strings.ContainsRune("=+-*/(){}<>!", c) {
+		} else if strings.ContainsRune("=+-*/(){}<>!,", c) {
 			lex.emit(string(c), string(c))
 		} else if !strings.ContainsRune(" \t\r\n", c) {
 			fmt.Fprintf(os.Stderr, "unrecognized char '%c' at line %d, column %d\n", c, lex.line+1, lex.pos-lex.width-lex.lineIndex+1)
@@ -123,8 +127,7 @@ func (lex *lexer) lex() {
 	close(lex.out)
 }
 
-// Lex returns a channel to use for Parse
-func Lex(filepath string) <-chan string {
+func lex(filepath string) <-chan string {
 	bytes, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
