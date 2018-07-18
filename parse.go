@@ -312,5 +312,9 @@ func (p *parser) atom() expressionVisitor {
 }
 
 func parse(lexOut <-chan string) *block {
-	return newParser(lexOut).block()
+	b := newParser(lexOut).block()
+	if os.Getenv("PARSEDEBUG") != "" {
+		fmt.Fprintln(os.Stderr, b)
+	}
+	return b
 }

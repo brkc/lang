@@ -37,6 +37,7 @@ type (
 	}
 
 	expressionVisitor interface {
+		String() string
 		visitExpression(scope *variableScope) *expression
 	}
 
@@ -78,6 +79,7 @@ type (
 	}
 
 	statementVisitor interface {
+		String() string
 		visitStatement(scope *variableScope) *statement
 	}
 
