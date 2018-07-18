@@ -73,7 +73,7 @@ func (lex *lexer) emit(s string, args ...string) {
 }
 
 func (lex *lexer) consumeString() {
-	var buffer bytes.Buffer
+	var buf bytes.Buffer
 	var prev rune
 	for {
 		c, err := lex.next()
@@ -84,9 +84,9 @@ func (lex *lexer) consumeString() {
 			break
 		}
 		prev = c
-		buffer.WriteRune(c)
+		buf.WriteRune(c)
 	}
-	lex.emit("string", buffer.String())
+	lex.emit("string", buf.String())
 }
 
 func (lex *lexer) lex() {
