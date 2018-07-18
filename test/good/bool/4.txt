@@ -1,24 +1,24 @@
-if true && true {
-  print "true && true";
+if true and true {
+  print "true and true";
 }
-if true && false {
-  print "true && false";
+if true and false {
+  print "true and false";
 }
-if false && true {
-  print "false && true";
+if false and true {
+  print "false and true";
 }
-if false && false {
-  print "false && false";
+if false and false {
+  print "false and false";
 }
-if true || true {
-  print "true || true";
+if true or true {
+  print "true or true";
 }
-if true || false {
-  print "true || false";
+if true or false {
+  print "true or false";
 }
-if false || true {
-  print "false || true";
+if false or true {
+  print "false or true";
 }
-if false || false {
-  print "false || false";
+if false or false {
+  print "false or false";
 }

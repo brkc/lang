@@ -154,10 +154,10 @@ func (b *booleanExpression) visitExpression(scope *variableScope) *expression {
 	expectSameType(left, right)
 
 	switch b.operator {
-	case "&&":
+	case "and":
 		typeCheck(booleanType, left, right)
 		return &expression{booleanType, left.value.(bool) && right.value.(bool)}
-	case "||":
+	case "or":
 		typeCheck(booleanType, left, right)
 		return &expression{booleanType, left.value.(bool) || right.value.(bool)}
 	}

@@ -48,11 +48,11 @@ callExpression
   ;
 
 booleanExpression
-  : andExpression ('||' andExpression)*
+  : andExpression ('or' andExpression)*
   ;
 
 andExpression
-  : condition ('&&' condition)*
+  : condition ('and' condition)*
   ;
 
 condition
@@ -68,7 +68,7 @@ term
   ;
 
 logicalNotExpression
-  : '!' logicalNotExpression
+  : 'not' logicalNotExpression
   | atom
   ;
 

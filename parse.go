@@ -203,9 +203,9 @@ func (p *parser) callExpression(id string) *callExpression {
 func (p *parser) booleanExpression() *booleanExpression {
 	b := &booleanExpression{p.andExpression(), "", nil}
 	for {
-		if p.accept("||") {
-			p.expect("||")
-			b = &booleanExpression{b, "||", p.andExpression()}
+		if p.accept("or") {
+			p.expect("or")
+			b = &booleanExpression{b, "or", p.andExpression()}
 		} else {
 			return b
 		}
@@ -215,9 +215,9 @@ func (p *parser) booleanExpression() *booleanExpression {
 func (p *parser) andExpression() *booleanExpression {
 	b := &booleanExpression{p.condition(), "", nil}
 	for {
-		if p.accept("&&") {
-			p.expect("&&")
-			b = &booleanExpression{b, "&&", p.condition()}
+		if p.accept("and") {
+			p.expect("and")
+			b = &booleanExpression{b, "and", p.condition()}
 		} else {
 			return b
 		}
@@ -276,8 +276,8 @@ func (p *parser) term() *term {
 }
 
 func (p *parser) logicalNotExpression() expressionVisitor {
-	if p.accept("!") {
-		p.expect("!")
+	if p.accept("not") {
+		p.expect("not")
 		return &logicalNotExpression{p.logicalNotExpression()}
 	}
 	return p.atom()
