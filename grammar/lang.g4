@@ -80,7 +80,7 @@ atom
   | '(' booleanExpression ')'
   ;
 
-Id: [a-z]+;
+Id: [a-zA-Z_][a-zA-Z_0-9]*;
 Number: [0-9]+;
 String: '"' (~["\r\n] | '\\"')* '"';
 Whitespace: [ \t\r\n]+ -> skip;

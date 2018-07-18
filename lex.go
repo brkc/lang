@@ -108,7 +108,7 @@ func (lex *lexer) lex() {
 		lex.consume("not", "not")
 		lex.consume("and", "and")
 		lex.consume("or", "or")
-		lex.consume("[a-z]+", "id")
+		lex.consume("[a-zA-Z_][a-zA-Z_0-9]*", "id")
 		lex.consume("[0-9]+", "number")
 		c, _ := lex.next()
 		if c == '"' {
