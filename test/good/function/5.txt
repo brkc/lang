@@ -1,4 +1,4 @@
-def p() {
+fn p() {
   var n = 5;
   print n;
 }

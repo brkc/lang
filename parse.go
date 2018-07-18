@@ -80,7 +80,7 @@ func (p *parser) statement() statementVisitor {
 		return p.breakStatement()
 	} else if p.accept("continue") {
 		return p.continueStatement()
-	} else if p.accept("def") {
+	} else if p.accept("fn") {
 		return p.functionStatement()
 	} else if p.accept("return") {
 		return p.returnStatement()
@@ -95,7 +95,7 @@ func (p *parser) statement() statementVisitor {
 		p.expect(";")
 		return v
 	} else {
-		p.expect("var|print|if|while|def|return")
+		p.expect("var|print|if|while|fn|return")
 		return nil
 	}
 }
@@ -148,7 +148,7 @@ func (p *parser) continueStatement() *continueStatement {
 
 func (p *parser) functionStatement() *functionStatement {
 	var parameters []string
-	p.expect("def")
+	p.expect("fn")
 	name := p.expect("id")
 	p.expect("(")
 	if p.accept("id") {

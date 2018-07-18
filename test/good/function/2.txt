@@ -1,4 +1,4 @@
-def message() {
+fn message() {
   return "hello";
 }
 

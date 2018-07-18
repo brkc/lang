@@ -32,7 +32,7 @@ whileStatement
   ;
 
 functionStatement
-  : 'def' Id '(' (Id (',' Id)?)? ')' '{' block '}'
+  : 'fn' Id '(' (Id (',' Id)?)? ')' '{' block '}'
   ;
 
 returnStatement

@@ -97,7 +97,7 @@ func (lex *lexer) lex() {
 		lex.consume("while", "while")
 		lex.consume("break", "break")
 		lex.consume("continue", "continue")
-		lex.consume("def", "def")
+		lex.consume("fn", "fn")
 		lex.consume("return", "return")
 		lex.consume("true", "true")
 		lex.consume("false", "false")
