@@ -279,7 +279,11 @@ func (e *logicalNotExpression) visitExpression(scope *variableScope) *expression
 }
 
 func (c *callExpression) visitExpression(scope *variableScope) *expression {
-	f := functions[c.name]
+	f, ok := functions[c.name]
+	if !ok {
+		fmt.Fprintf(os.Stderr, "could not find fn: '%s'\n", c.name)
+		os.Exit(1)
+	}
 	newScope := newVariableScope()
 	newScope.parent = scope
 	for i, p := range f.parameters {
