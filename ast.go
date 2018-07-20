@@ -25,7 +25,7 @@ type (
 
 	callExpression struct {
 		name      string
-		arguments []*booleanExpression
+		arguments []expressionVisitor
 	}
 
 	continueStatement struct {
@@ -52,7 +52,7 @@ type (
 	}
 
 	ifStatement struct {
-		booleanExpression *booleanExpression
+		booleanExpression expressionVisitor
 		block             *block
 	}
 
@@ -94,7 +94,7 @@ type (
 	}
 
 	whileStatement struct {
-		booleanExpression *booleanExpression
+		booleanExpression expressionVisitor
 		block             *block
 	}
 )

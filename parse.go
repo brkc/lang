@@ -185,7 +185,7 @@ func (p *parser) assignment(id string) *assignmentStatement {
 }
 
 func (p *parser) callExpression(id string) *callExpression {
-	var arguments []*booleanExpression
+	var arguments []expressionVisitor
 	p.expect("(")
 	for {
 		if p.accept(")") {
@@ -200,8 +200,8 @@ func (p *parser) callExpression(id string) *callExpression {
 	return &callExpression{id, arguments}
 }
 
-func (p *parser) booleanExpression() *booleanExpression {
-	b := &booleanExpression{p.andExpression(), "", nil}
+func (p *parser) booleanExpression() expressionVisitor {
+	b := p.andExpression()
 	for {
 		if p.accept("or") {
 			p.expect("or")
@@ -212,8 +212,8 @@ func (p *parser) booleanExpression() *booleanExpression {
 	}
 }
 
-func (p *parser) andExpression() *booleanExpression {
-	b := &booleanExpression{p.condition(), "", nil}
+func (p *parser) andExpression() expressionVisitor {
+	b := p.condition()
 	for {
 		if p.accept("and") {
 			p.expect("and")
@@ -224,7 +224,7 @@ func (p *parser) andExpression() *booleanExpression {
 	}
 }
 
-func (p *parser) condition() *booleanExpression {
+func (p *parser) condition() expressionVisitor {
 	var operator string
 	left := p.logicalOperand()
 	if p.accept("==") {
@@ -240,13 +240,13 @@ func (p *parser) condition() *booleanExpression {
 	} else if p.accept("<=") {
 		operator = p.expect("<=")
 	} else {
-		return &booleanExpression{left, "", nil}
+		return left
 	}
 	return &booleanExpression{left, operator, p.logicalOperand()}
 }
 
-func (p *parser) logicalOperand() *logicalOperand {
-	e := &logicalOperand{p.term(), "", nil}
+func (p *parser) logicalOperand() expressionVisitor {
+	e := p.term()
 	for {
 		if p.accept("+") {
 			p.expect("+")
@@ -260,8 +260,8 @@ func (p *parser) logicalOperand() *logicalOperand {
 	}
 }
 
-func (p *parser) term() *term {
-	t := &term{p.logicalNotExpression(), "", nil}
+func (p *parser) term() expressionVisitor {
+	t := p.logicalNotExpression()
 	for {
 		if p.accept("*") {
 			p.expect("*")
