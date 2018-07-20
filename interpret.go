@@ -65,8 +65,16 @@ func (a *declarationStatement) visitStatement(scope *variableScope) *statement {
 }
 
 func (a *assignmentStatement) visitStatement(scope *variableScope) *statement {
-	scope.variables[a.id] = a.expression.visitExpression(scope)
-	return &statement{assignmentType, nil}
+	for scope != nil {
+		if _, ok := scope.variables[a.id]; ok {
+			scope.variables[a.id] = a.expression.visitExpression(scope)
+			return &statement{assignmentType, nil}
+		}
+		scope = scope.parent
+	}
+	fmt.Fprintf(os.Stderr, "unrecognized var: '%s'\n", a.id)
+	os.Exit(1)
+	return nil
 }
 
 func (p *printStatement) visitStatement(scope *variableScope) *statement {
