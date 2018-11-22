@@ -1,27 +1,34 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strings"
 )
 
+var (
+	lexFlag   = flag.Bool("lex", false, "lex only")
+	parseFlag = flag.Bool("parse", false, "parse only")
+)
+
 func main() {
-	if len(os.Args) != 2 {
+	flag.Parse()
+	if flag.NArg() != 1 {
 		fmt.Fprintln(os.Stderr, "missing file")
 		os.Exit(2)
 	}
-	file := os.Args[1]
-	if os.Getenv("LEXDEBUG") != "" {
-		lexdebug(file)
-	} else if os.Getenv("PARSEDEBUG") != "" {
-		parsedebug(file)
+	file := flag.Arg(0)
+	if *lexFlag {
+		debugLex(file)
+	} else if *parseFlag {
+		debugParse(file)
 	} else {
 		interpret(file)
 	}
 }
 
-func lexdebug(file string) {
+func debugLex(file string) {
 	lexer := lex(file)
 	for {
 		line := <-lexer
@@ -32,6 +39,6 @@ func lexdebug(file string) {
 	}
 }
 
-func parsedebug(file string) {
+func debugParse(file string) {
 	fmt.Fprintln(os.Stderr, parse(lex(file)))
 }
