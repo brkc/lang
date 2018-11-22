@@ -8,4 +8,4 @@ fn number(n) {
   }
 }
 
-print number(5);
+print(number(5));

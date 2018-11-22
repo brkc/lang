@@ -77,22 +77,6 @@ func (a *assignmentStatement) visitStatement(scope *variableScope) *statement {
 	return nil
 }
 
-func (p *printStatement) visitStatement(scope *variableScope) *statement {
-	v := p.expression.visitExpression(scope)
-	switch v.typeValue {
-	case stringType:
-		fmt.Printf("%s\n", v.value.(string))
-	case numberType:
-		fmt.Printf("%d\n", v.value.(int))
-	case booleanType:
-		fmt.Printf("%t\n", v.value.(bool))
-	default:
-		fmt.Fprintf(os.Stderr, "unexpected type %s\n", types[v.typeValue])
-		os.Exit(1)
-	}
-	return &statement{printType, nil}
-}
-
 func (i *ifStatement) visitStatement(scope *variableScope) *statement {
 	b := i.booleanExpression.visitExpression(scope)
 	typeCheck(booleanType, b)
@@ -281,8 +265,12 @@ func (e *logicalNotExpression) visitExpression(scope *variableScope) *expression
 func (c *callExpression) visitExpression(scope *variableScope) *expression {
 	f, ok := functions[c.name]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "could not find fn: '%s'\n", c.name)
-		os.Exit(1)
+		expr, err := visitBuiltin(c, scope)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return expr
 	}
 	newScope := newVariableScope()
 	newScope.parent = scope
@@ -346,4 +334,12 @@ func expectSameType(args ...*expression) {
 		}
 		typeCheck(firstType, arg)
 	}
+}
+
+func visitBuiltin(c *callExpression, scope *variableScope) (*expression, error) {
+	var args []*expression
+	for _, arg := range c.arguments {
+		args = append(args, arg.visitExpression(scope))
+	}
+	return builtin(c.name, args)
 }

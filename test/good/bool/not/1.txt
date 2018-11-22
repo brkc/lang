@@ -1,1 +1,1 @@
-print not true;
+print(not true);

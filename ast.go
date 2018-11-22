@@ -70,10 +70,6 @@ type (
 		value string
 	}
 
-	printStatement struct {
-		expression expressionVisitor
-	}
-
 	returnStatement struct {
 		expression expressionVisitor
 	}

@@ -1,2 +1,2 @@
 var s = "hello";
-print 3 + s;
+print(3 + s);

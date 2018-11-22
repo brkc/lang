@@ -70,8 +70,6 @@ func (p *parser) block() *block {
 func (p *parser) statement() statementVisitor {
 	if p.accept("var") {
 		return p.declaration()
-	} else if p.accept("print") {
-		return p.print()
 	} else if p.accept("if") {
 		return p.ifStatement()
 	} else if p.accept("while") {
@@ -95,7 +93,7 @@ func (p *parser) statement() statementVisitor {
 		p.expect(";")
 		return v
 	} else {
-		p.expect("var|print|if|while|fn|return")
+		p.expect("var|if|while|fn|return")
 		return nil
 	}
 }
@@ -107,13 +105,6 @@ func (p *parser) declaration() *declarationStatement {
 	n := p.booleanExpression()
 	p.expect(";")
 	return &declarationStatement{id, n}
-}
-
-func (p *parser) print() *printStatement {
-	p.expect("print")
-	expression := p.booleanExpression()
-	p.expect(";")
-	return &printStatement{expression}
 }
 
 func (p *parser) ifStatement() *ifStatement {

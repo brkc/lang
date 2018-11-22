@@ -1,6 +1,6 @@
 if true {
-  print "true";
+  print("true");
 }
 if false {
-  print "false";
+  print("false");
 }

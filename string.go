@@ -13,10 +13,6 @@ func (a *assignmentStatement) String() string {
 	return fmt.Sprintf("(assignment %s %s)", a.id, a.expression)
 }
 
-func (p *printStatement) String() string {
-	return fmt.Sprintf("(print %s)", p.expression)
-}
-
 func (i *ifStatement) String() string {
 	return fmt.Sprintf("(if %s %s)", i.booleanExpression, i.block)
 }

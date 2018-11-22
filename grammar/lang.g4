@@ -6,7 +6,6 @@ block
 
 statement
   : declaration
-  | print
   | ifStatement
   | whileStatement
   | functionStatement
@@ -17,10 +16,6 @@ statement
 
 declaration
   : 'var' Id '=' booleanExpression ';'
-  ;
-
-print
-  : 'print' booleanExpression ';'
   ;
 
 ifStatement

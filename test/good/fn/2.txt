@@ -2,4 +2,4 @@ fn message() {
   return "hello";
 }
 
-print message();
+print(message());
