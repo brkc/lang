@@ -51,8 +51,8 @@ var (
 	}
 )
 
-func interpret(s string) {
-	parse(lex(s)).visitStatement(rootScope)
+func interpret(file string) {
+	parse(lex(file)).visitStatement(rootScope)
 }
 
 func newVariableScope() *variableScope {
