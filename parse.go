@@ -7,17 +7,18 @@ import (
 	"strconv"
 )
 
-type parser struct {
-	token  *token
-	lexOut <-chan string
-}
-
-type token struct {
-	symbol string
-	line   int
-	column int
-	value  string
-}
+type (
+	parser struct {
+		token  *token
+		lexOut <-chan string
+	}
+	token struct {
+		symbol string
+		line   int
+		column int
+		value  string
+	}
+)
 
 func newParser(lexOut <-chan string) *parser {
 	return &parser{newTokenInfo(lexOut), lexOut}
