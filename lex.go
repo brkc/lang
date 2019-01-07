@@ -111,6 +111,7 @@ func (lex *lexer) lex() {
 			lex.consumeString()
 		} else if c == ';' {
 			lex.emit(";")
+		} else if c == '\n' {
 			lex.newLine()
 		} else if strings.ContainsRune("=+-*/(){}<>,", c) {
 			lex.emit(string(c), string(c))
