@@ -105,7 +105,7 @@ func (p *parser) declaration(scope *scope) *declarationStatement {
 	p.expect("=")
 	n := p.booleanExpression(scope)
 	p.expect(";")
-	scope.symbols[id] = true
+	scope.declare(id, true)
 	return &declarationStatement{id, n}
 }
 
@@ -158,7 +158,7 @@ func (p *parser) functionStatement(scope *scope) *functionStatement {
 	p.expect("{")
 	newScope := newScope(scope)
 	for _, p := range parameters {
-		newScope.symbols[p] = true
+		newScope.declare(p, true)
 	}
 	block := p.block(newScope)
 	p.expect("}")

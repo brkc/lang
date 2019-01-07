@@ -17,10 +17,6 @@ type (
 		expression *expression
 	}
 	statementType int
-	variableScope struct {
-		variables map[string]*expression
-		parent    *variableScope
-	}
 )
 
 const (
@@ -43,7 +39,7 @@ const (
 
 var (
 	functions = map[string]*functionStatement{}
-	rootScope = newVariableScope()
+	rootScope = newScope(nil)
 	types     = map[expressionType]string{
 		numberType:  "number",
 		stringType:  "string",
@@ -55,49 +51,38 @@ func interpret(file string) {
 	parse(lex(file)).visitStatement(rootScope)
 }
 
-func newVariableScope() *variableScope {
-	return &variableScope{map[string]*expression{}, nil}
-}
-
-func (a *declarationStatement) visitStatement(scope *variableScope) *statement {
-	scope.variables[a.id] = a.expression.visitExpression(scope)
+func (a *declarationStatement) visitStatement(scope *scope) *statement {
+	scope.declare(a.id, a.expression.visitExpression(scope))
 	return &statement{declarationType, nil}
 }
 
-func (a *assignmentStatement) visitStatement(scope *variableScope) *statement {
-	for scope != nil {
-		if _, ok := scope.variables[a.id]; ok {
-			scope.variables[a.id] = a.expression.visitExpression(scope)
-			return &statement{assignmentType, nil}
-		}
-		scope = scope.parent
+func (a *assignmentStatement) visitStatement(scope *scope) *statement {
+	if scope.resolve(a.id) != nil {
+		scope.assign(a.id, a.expression.visitExpression(scope))
+		return &statement{assignmentType, nil}
 	}
 	fmt.Fprintf(os.Stderr, "unrecognized var: '%s'\n", a.id)
 	os.Exit(1)
 	return nil
 }
 
-func (i *ifStatement) visitStatement(scope *variableScope) *statement {
+func (i *ifStatement) visitStatement(scope *scope) *statement {
 	b := i.booleanExpression.visitExpression(scope)
 	typeCheck(booleanType, b)
 	if b.value.(bool) {
-		newScope := newVariableScope()
-		newScope.parent = scope
-		return i.block.visitStatement(newScope)
+		return i.block.visitStatement(newScope(scope))
 	}
 	return &statement{ifType, nil}
 }
 
-func (i *whileStatement) visitStatement(scope *variableScope) *statement {
+func (i *whileStatement) visitStatement(scope *scope) *statement {
 	for {
 		b := i.booleanExpression.visitExpression(scope)
 		typeCheck(booleanType, b)
 		if !b.value.(bool) {
 			break
 		}
-		newScope := newVariableScope()
-		newScope.parent = scope
-		v := i.block.visitStatement(newScope)
+		v := i.block.visitStatement(newScope(scope))
 		switch v.typeValue {
 		case breakType, returnType:
 			return v
@@ -106,24 +91,24 @@ func (i *whileStatement) visitStatement(scope *variableScope) *statement {
 	return &statement{whileType, nil}
 }
 
-func (i *breakStatement) visitStatement(scope *variableScope) *statement {
+func (i *breakStatement) visitStatement(scope *scope) *statement {
 	return &statement{breakType, nil}
 }
 
-func (i *continueStatement) visitStatement(scope *variableScope) *statement {
+func (i *continueStatement) visitStatement(scope *scope) *statement {
 	return &statement{continueType, nil}
 }
 
-func (f *functionStatement) visitStatement(scope *variableScope) *statement {
+func (f *functionStatement) visitStatement(scope *scope) *statement {
 	functions[f.name] = f
 	return &statement{functionType, nil}
 }
 
-func (r *returnStatement) visitStatement(scope *variableScope) *statement {
+func (r *returnStatement) visitStatement(scope *scope) *statement {
 	return &statement{returnType, r.expression.visitExpression(scope)}
 }
 
-func (b *block) visitStatement(scope *variableScope) *statement {
+func (b *block) visitStatement(scope *scope) *statement {
 	for _, s := range b.statements {
 		v := s.visitStatement(scope)
 		if v == nil {
@@ -137,7 +122,7 @@ func (b *block) visitStatement(scope *variableScope) *statement {
 	return &statement{blockType, nil}
 }
 
-func (b *booleanExpression) visitExpression(scope *variableScope) *expression {
+func (b *booleanExpression) visitExpression(scope *scope) *expression {
 	left := b.left.visitExpression(scope)
 	if b.right == nil {
 		return left
@@ -226,7 +211,7 @@ func evaluateBooleanComparison(left bool, operator string, right bool) *expressi
 	return &expression{booleanType, b}
 }
 
-func (e *logicalOperand) visitExpression(scope *variableScope) *expression {
+func (e *logicalOperand) visitExpression(scope *scope) *expression {
 	left := e.left.visitExpression(scope)
 	if e.right != nil {
 		right := e.right.visitExpression(scope)
@@ -241,7 +226,7 @@ func (e *logicalOperand) visitExpression(scope *variableScope) *expression {
 	return e.left.visitExpression(scope)
 }
 
-func (t *term) visitExpression(scope *variableScope) *expression {
+func (t *term) visitExpression(scope *scope) *expression {
 	left := t.left.visitExpression(scope)
 	if t.right != nil {
 		right := t.right.visitExpression(scope)
@@ -256,13 +241,13 @@ func (t *term) visitExpression(scope *variableScope) *expression {
 	return t.left.visitExpression(scope)
 }
 
-func (e *logicalNotExpression) visitExpression(scope *variableScope) *expression {
+func (e *logicalNotExpression) visitExpression(scope *scope) *expression {
 	b := e.booleanExpression.visitExpression(scope)
 	typeCheck(booleanType, b)
 	return &expression{booleanType, !b.value.(bool)}
 }
 
-func (c *callExpression) visitExpression(scope *variableScope) *expression {
+func (c *callExpression) visitExpression(scope *scope) *expression {
 	f, ok := functions[c.name]
 	if !ok {
 		expr, err := visitBuiltin(c, scope)
@@ -272,10 +257,9 @@ func (c *callExpression) visitExpression(scope *variableScope) *expression {
 		}
 		return expr
 	}
-	newScope := newVariableScope()
-	newScope.parent = scope
+	newScope := newScope(scope)
 	for i, p := range f.parameters {
-		newScope.variables[p] = c.arguments[i].visitExpression(scope)
+		newScope.declare(p, c.arguments[i].visitExpression(scope))
 	}
 	v := f.block.visitStatement(newScope)
 	switch v.typeValue {
@@ -285,21 +269,15 @@ func (c *callExpression) visitExpression(scope *variableScope) *expression {
 	return nil
 }
 
-func (c *callExpression) visitStatement(scope *variableScope) *statement {
+func (c *callExpression) visitStatement(scope *scope) *statement {
 	return &statement{callType, c.visitExpression(scope)}
 }
 
-func (i *identifier) visitExpression(scope *variableScope) *expression {
-	for scope != nil {
-		if value, ok := scope.variables[i.value]; ok {
-			return value
-		}
-		scope = scope.parent
-	}
-	return nil
+func (i *identifier) visitExpression(scope *scope) *expression {
+	return scope.resolve(i.value).value.(*expression)
 }
 
-func (nl *numberLiteral) visitExpression(scope *variableScope) *expression {
+func (nl *numberLiteral) visitExpression(scope *scope) *expression {
 	n, err := strconv.Atoi(nl.value)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "expected number")
@@ -308,11 +286,11 @@ func (nl *numberLiteral) visitExpression(scope *variableScope) *expression {
 	return &expression{numberType, n}
 }
 
-func (s *stringLiteral) visitExpression(scope *variableScope) *expression {
+func (s *stringLiteral) visitExpression(scope *scope) *expression {
 	return &expression{stringType, s.value}
 }
 
-func (b *booleanLiteral) visitExpression(scope *variableScope) *expression {
+func (b *booleanLiteral) visitExpression(scope *scope) *expression {
 	return &expression{booleanType, b.value}
 }
 
@@ -336,7 +314,7 @@ func expectSameType(args ...*expression) {
 	}
 }
 
-func visitBuiltin(c *callExpression, scope *variableScope) (*expression, error) {
+func visitBuiltin(c *callExpression, scope *scope) (*expression, error) {
 	var args []*expression
 	for _, arg := range c.arguments {
 		args = append(args, arg.visitExpression(scope))

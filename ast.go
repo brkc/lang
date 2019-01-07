@@ -38,7 +38,7 @@ type (
 
 	expressionVisitor interface {
 		String() string
-		visitExpression(scope *variableScope) *expression
+		visitExpression(scope *scope) *expression
 	}
 
 	functionStatement struct {
@@ -76,7 +76,7 @@ type (
 
 	statementVisitor interface {
 		String() string
-		visitStatement(scope *variableScope) *statement
+		visitStatement(scope *scope) *statement
 	}
 
 	stringLiteral struct {

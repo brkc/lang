@@ -1,15 +1,30 @@
 package main
 
+type symbol struct {
+	name  string
+	value interface{}
+}
+
 type scope struct {
-	symbols map[string]interface{}
+	symbols map[string]*symbol
 	parent  *scope
 }
 
 func newScope(s *scope) *scope {
-	return &scope{map[string]interface{}{}, s}
+	return &scope{map[string]*symbol{}, s}
 }
 
-func (scope *scope) resolve(name string) interface{} {
+func (scope *scope) declare(name string, value interface{}) {
+	scope.symbols[name] = &symbol{name, value}
+}
+
+func (scope *scope) assign(name string, value interface{}) {
+	if symbol := scope.resolve(name); symbol != nil {
+		symbol.value = value
+	}
+}
+
+func (scope *scope) resolve(name string) *symbol {
 	for scope != nil {
 		if s, ok := scope.symbols[name]; ok {
 			return s
